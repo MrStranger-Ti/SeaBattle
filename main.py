@@ -1,6 +1,11 @@
 import os
 import telebot
 import dotenv
+import logging
+
+logging.basicConfig(level='INFO')
+
+logger = logging.getLogger(__name__)
 
 dotenv.load_dotenv()
 
@@ -19,4 +24,5 @@ def echo(message):
 
 
 if __name__ == '__main__':
+    logger.info('Бот запущен!')
     bot.infinity_polling()
