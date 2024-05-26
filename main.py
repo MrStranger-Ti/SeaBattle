@@ -2,23 +2,24 @@ import importlib
 import logging
 import os
 
-from telebot.types import User
+import telebot.types
 
-from database.queries import save_user
 from loader import bot
+from threads.session import Session
 
 logging.basicConfig(level='INFO')
 logger = logging.getLogger(__name__)
 
 
-def start_game(player_ids: list[int]):
+def create_session(players: list[telebot.types.User]):
     """
-    Запуск игры.
+    Создание сессии.
 
-    Если в очереди есть нужно количество игроков, то запускаем игру
+    Если в очереди есть нужное количество игроков, то создаем сессию.
     """
-    for player_id in player_ids:
-        bot.send_message(player_id, 'Игра начинается.')
+
+    session = Session(bot, players)
+    session.start()
 
 
 def main():

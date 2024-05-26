@@ -1,7 +1,7 @@
 import threading
 import time
 
-from main import start_game
+from main import create_session
 
 PLAYERS_IN_GAME = []
 PLAYERS_QUEUE = []
@@ -17,14 +17,15 @@ class Matchmaking(threading.Thread):
     def __init__(self):
         super().__init__()
         self.run_cycle = True
+        self.total_players = 1
 
     def run(self):
         while self.run_cycle:
             time.sleep(3)
-            if len(PLAYERS_QUEUE) >= 4:
-                start_game(PLAYERS_QUEUE[:4])
-                PLAYERS_IN_GAME.extend(PLAYERS_QUEUE[:4])
-                del PLAYERS_QUEUE[:4]
+            if len(PLAYERS_QUEUE) >= self.total_players:
+                create_session(PLAYERS_QUEUE[:self.total_players])
+                PLAYERS_IN_GAME.extend(PLAYERS_QUEUE[:self.total_players])
+                del PLAYERS_QUEUE[:self.total_players]
 
 
 def start_matchmaking() -> threading.Thread:
