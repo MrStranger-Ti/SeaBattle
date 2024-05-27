@@ -1,3 +1,5 @@
+import re
+
 import telebot.types
 
 from string import ascii_lowercase
@@ -26,7 +28,7 @@ class Player:
         """
         Генерация поля.
 
-        Поле будет являться вложенным списком. Размер 10X10
+        Поле будет являться вложенным списком. Размер 10X10.
         """
         return [
             [Cell(row_letters[row] + str(col + 1)) for col in range(10)]
@@ -38,10 +40,7 @@ class Player:
         """
         Валидация позиции ячейки, который передал игрок.
 
-        Валидация не проходит если:
-        - длина позиции не 2 и не 3
-        - буква вне диапазона правильных значений
-        - число вне диапазона правильных значений
+        Для валидации используется регулярное выражение.
 
         Примеры:
 
@@ -51,13 +50,7 @@ class Player:
         x1 - неверно
         f0 - неверно
         """
-        if len(position) not in (2, 3):
-            return False
-
-        elif position[0] not in row_letters:
-            return False
-
-        elif position[1:] not in col_numbers:
+        if not re.fullmatch(r'[a-j][1-9]0?', position):
             return False
 
         return True
