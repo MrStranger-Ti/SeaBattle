@@ -47,6 +47,7 @@ class Session(threading.Thread):
         """
         # Всем игрокам в сессии выставляем состояние waiting_for_move и уведомляем о начале игры.
         for player in self.players:
+
             player.opponent = self.get_opponent(player)
             player_state = get_or_add_state(player.object.id)
             player_state.name = 'waiting_for_move'
@@ -81,7 +82,7 @@ class Session(threading.Thread):
 
             try:
                 # Пробуем открыть клетку соперника. Если мы успешно ее открыли, то узнаем корабль это или нет.
-                is_ship = player.open_opponent_cell(leading_player_state.message.text)
+                is_ship = self.leading.open_opponent_cell(leading_player_state.message.text)
             except (PositionError, CellOpenedError) as exc:
 
                 # Так как произошла ошибка, то меняем состояние на making_move,
@@ -106,6 +107,9 @@ class Session(threading.Thread):
             else:
                 self.bot.send_message(self.leading.object.id, 'Вы не попали.')
 
+            # Если игрок проиграл, то отправляем соответствующее сообщение и удаляем его из сессии.
+            ...
+
             # Изменяем ведущего игрока.
             self.change_leading()
 
@@ -117,7 +121,7 @@ class Session(threading.Thread):
             return self.players[0]
 
         ind = self.players.index(player)
-        return self.players.index(ind + 1)
+        return self.players[ind + 1]
 
     def send_message(self, player: Player, message: str) -> None:
         """

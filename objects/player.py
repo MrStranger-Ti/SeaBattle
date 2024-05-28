@@ -1,6 +1,6 @@
 import re
 
-import telebot.types
+from telebot.types import User
 
 from string import ascii_lowercase
 
@@ -16,19 +16,25 @@ class Player:
 
     Имеет свое поле и управляет им.
     Также он может попросить открыть ячейку другого игрока.
+
+    Attributes:
+        object (User): объект пользователя из библиотеки telebot
+        opponent (Player): соперник игрока
+        lost (bool): проиграл ли игрок или нет
+        field (list[list[Cell]]): поле игрока
     """
-    def __init__(self, user: telebot.types.User):
-        self.object = user
+    def __init__(self, user: User):
+        self.object: User = user
         self.opponent: Player | None = None
-        self.lost = False
-        self.field = self.create_field()
+        self.lost: bool = False
+        self.field: list[list[Cell]] = self.create_field()
 
     @staticmethod
     def create_field() -> list[list['Cell']]:
         """
         Генерация поля.
 
-        Поле будет являться вложенным списком. Размер 10X10.
+        Поле является вложенным списком. Размер 10X10.
         """
         return [
             [Cell(row_letters[row] + str(col + 1)) for col in range(10)]
@@ -38,7 +44,7 @@ class Player:
     @staticmethod
     def validate_position(position: str) -> bool:
         """
-        Валидация позиции ячейки, который передал игрок.
+        Валидация позиции ячейки.
 
         Для валидации используется регулярное выражение.
 
@@ -59,7 +65,7 @@ class Player:
         """
         Получение ячейки.
         """
-        # Если валидация не проша, то возбуждаем ошибку PositionError.
+        # Если валидация не прошла, то возбуждаем ошибку PositionError.
         if not self.validate_position(position):
             raise PositionError()
 
@@ -83,11 +89,15 @@ class Player:
         """
         cell = self.get_cell(position)
 
-        # Если ячейка уже открыта, то возбуждаем ошибку CellOpenedError
+        # Если ячейка уже открыта, то возбуждаем ошибку CellOpenedError.
         if cell.opened:
             raise CellOpenedError()
 
         cell.opened = True
+
+        # Если у игрока не осталось кораблей, то меняем self.lost на True.
+        ...
+
         return cell.is_ship
 
     def open_opponent_cell(self, position: str) -> bool:
