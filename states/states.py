@@ -17,7 +17,7 @@ class State:
     def __init__(self, name: str, in_game: bool = False, message: Message | None = None):
         self.name: str = name
         self.in_game: bool = in_game
-        self.message: Message = message
+        self.messages: dict[str: str] = {}
 
 
 def get_or_add_state(user_id: int, name: str | None = None, in_game: bool = False, message: Message | None = None) -> State:

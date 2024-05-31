@@ -33,6 +33,12 @@ class Player:
         self.field: list[list[Cell]] = self.create_field()
         self.ships: dict[int: int] = {}
 
+    def all_ships_on_field(self) -> bool:
+        valid_ships_count = (1, 2, 3, 4)
+        if tuple(self.ships.values()) == valid_ships_count:
+            return True
+        return False
+
     @staticmethod
     def create_field() -> list[list['Cell']]:
         """
@@ -108,7 +114,7 @@ class Player:
 
             elif direction == 'bottom':
                 ind_cur_row = row_letters.index(cur_position[0])
-                if ind_cur_row + 1 < len(row_letters - 1):
+                if ind_cur_row + 1 < len(row_letters) - 1:
                     raise PositionError()
 
                 next_row = row_letters[ind_cur_row + 1]
@@ -133,6 +139,8 @@ class Player:
 
         for cell in cells:
             cell.is_ship = True
+
+        self.ships[size] = self.ships.get(size, 0) + 1
 
     @staticmethod
     def validate_cell(cell: 'Cell') -> bool:

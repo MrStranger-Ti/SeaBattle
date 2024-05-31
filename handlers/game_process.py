@@ -2,6 +2,7 @@ from telebot import TeleBot
 from telebot.types import Message
 
 from states.states import get_or_add_state
+from threads.session import ships
 
 
 def load(bot: TeleBot):
@@ -13,12 +14,17 @@ def load(bot: TeleBot):
         # Достаем состояние пользователя.
         user_state = get_or_add_state(message.from_user.id)
 
-        if user_state.name == 'setting_ship_position_4':
-            user_state.name = 'check_ship_position_4'
-            user_state.message = message
+        for ship_size in ships:
+            if user_state.name == 'setting_ship_position' + '_' + ship_size:
+                user_state.name = 'check_ship_position' + '_' + ship_size
+                user_state.messages['position'] = message.text
+
+            elif user_state.name == 'setting_ship_direction' + '_' + ship_size:
+                user_state.name = 'check_ship_direction' + '_' + ship_size
+                user_state.messages['direction'] = message.text
 
         # Если состояние waiting_for_move, то удаляем его сообщения, чтобы не засорять чат.
-        elif user_state.name == 'waiting_for_move':
+        if user_state.name == 'waiting_for_move':
             bot.delete_message(message.chat.id, message.id)
 
         # Если состояние making_move, то меняем состояние на check_move

@@ -5,11 +5,11 @@ from datetime import datetime, timedelta
 
 import telebot
 
-from objects.exceptions import PositionError, CellOpenedError
+from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 from objects.player import Player
 from states.states import get_or_add_state
 
-ships = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
+ships: list[int] = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
 
 
 class Session(threading.Thread):
@@ -33,7 +33,7 @@ class Session(threading.Thread):
 
     def run(self) -> None:
         # подготовка к игре
-        ...
+        self.prepare()
 
         # запуск игры
         self.start_game()
@@ -49,7 +49,7 @@ class Session(threading.Thread):
         """
         for player in self.players:
             player_state = get_or_add_state(player.object.id)
-            player_state.name = 'setting_ship_position_4'
+            player_state.name = 'setting_ship_position' + str(ships[0])
             self.bot.send_message(player.object.id, 'Установка корабля с 4-мя клетками.')
             self.bot.send_message(player.object.id, 'Выберите клетку.')
 
@@ -59,18 +59,41 @@ class Session(threading.Thread):
             for player in self.players:
                 player_state = get_or_add_state(player.object.id)
 
-                if player_state.name == 'check_ship_position_4':
-                    position = player_state.message.text
-                    try:
-                        cell = player.get_cell(position)
-                    except PositionError:
-                        self.bot.send_message(player.object.id, 'Неверная клетка')
-                        continue
+                for ship_size in ships:
+                    if player_state.name == 'check_ship_position' + '_' + str(ship_size):
+                        position = player_state.messages.get('position')
+                        try:
+                            cell = player.get_cell(position)
+                        except PositionError:
+                            self.bot.send_message(player.object.id, 'Неверная клетка')
+                            continue
 
-                    if player.validate_position(cell):
-                        player_state.name = 'setting_ship_direction_4'
+                        if player.validate_cell(cell):
+                            player_state.name = 'setting_ship_direction' + '_' + str(ship_size)
+                            self.bot.send_message(player.object.id, 'Выберите направление')
 
-                    player.ships[4] = player.ships.get(4, 0) + 1
+                    elif player_state.name == 'check_ship_direction' + '_' + str(ship_size):
+                        position = player_state.messages.get('position')
+                        direction = player_state.messages.get('direction')
+
+                        try:
+                            player.set_ship(position, int(ship_size), direction)
+                        except (PositionError, ShipNearbyError) as exc:
+                            if isinstance(exc, PositionError):
+                                self.bot.send_message(player.object.id, 'Нельзя поставить корабль на несуществующую клетку. Попробуйте снова.')
+
+                            elif isinstance(exc, ShipNearbyError):
+                                self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
+
+                            player_state.name = 'setting_ship_position' + '_' + str(ship_size)
+                            self.bot.send_message(player.object.id, 'Выберите клетку.')
+                            continue
+
+                        if player.all_ships_on_field():
+                            self.bot.send_message(player.object.id, 'Вы готовы к игре. Дождитесь всех игроков.')
+                            player.ready = True
+                        else:
+                            player_state.name = 'setting_ship_position_' + str(ship_size + 1)
 
         # Всем игрокам в сессии выставляем состояние waiting_for_move.
         for player in self.players:
