@@ -95,38 +95,37 @@ class Player:
 
         cells = [cell]
         cur_position = cell.position
-        for _ in range(size):
+        for _ in range(size - 1):
+            ind_cur_row = row_letters.index(cur_position[0])
+            ind_cur_col = col_numbers.index(cur_position[1:])
+
             if direction == 'top':
-                ind_cur_row = row_letters.index(cur_position[0])
-                if ind_cur_row - 1 < 0:
+                ind_next_row = ind_cur_row - 1
+                if ind_next_row < 0:
                     raise PositionError()
 
-                next_row = row_letters[ind_cur_row - 1]
-                next_position = next_row + cur_position[1:]
+                next_position = row_letters[ind_next_row] + cur_position[1:]
 
             elif direction == 'right':
-                ind_cur_col = col_numbers.index(cur_position[1:])
-                if ind_cur_col + 1 > len(col_numbers) - 1:
+                ind_next_col = ind_cur_col + 1
+                if ind_next_col > len(col_numbers) - 1:
                     raise PositionError()
 
-                next_col = col_numbers[ind_cur_col + 1]
-                next_position = cur_position[0] + next_col
+                next_position = cur_position[0] + col_numbers[ind_next_col]
 
             elif direction == 'bottom':
-                ind_cur_row = row_letters.index(cur_position[0])
-                if ind_cur_row + 1 < len(row_letters) - 1:
+                ind_next_row = ind_cur_row + 1
+                if ind_next_row > len(row_letters) - 1:
                     raise PositionError()
 
-                next_row = row_letters[ind_cur_row + 1]
-                next_position = next_row + cur_position[1:]
+                next_position = row_letters[ind_next_row] + cur_position[1:]
 
             elif direction == 'left':
-                ind_cur_col = col_numbers.index(cur_position[1:])
-                if ind_cur_col - 1 < 0:
+                ind_next_col = ind_cur_col - 1
+                if ind_next_col < 0:
                     raise PositionError()
 
-                next_col = col_numbers[ind_cur_col - 1]
-                next_position = cur_position[0] + next_col
+                next_position = cur_position[0] + col_numbers[ind_next_col]
 
             next_cell = self.get_cell(next_position)
             cells.append(next_cell)
@@ -134,7 +133,7 @@ class Player:
             cur_position = next_position
 
         for cell in cells:
-            if not self.validate_cell(cell):
+            if not self.valid_cell(cell):
                 raise ShipNearbyError()
 
         for cell in cells:
@@ -142,8 +141,10 @@ class Player:
 
         self.ships[size] = self.ships.get(size, 0) + 1
 
-    @staticmethod
-    def validate_cell(cell: 'Cell') -> bool:
+    def valid_cell(self, cell: 'Cell') -> bool:
+        if cell.is_ship:
+            return False
+
         ind_row = row_letters.index(cell.position[0])
         ind_col = col_numbers.index(cell.position[1:])
         indices = [
@@ -157,8 +158,17 @@ class Player:
             (ind_row - 1, ind_col - 1),
         ]
 
+        cells_nearby = []
         for ind_row, ind_col in indices:
-            if ind_row > len(row_letters - 1) or ind_row < 0 or ind_col > len(col_numbers - 1) or ind_col < 0:
+            try:
+                cell = self.field[ind_row][ind_col]
+            except IndexError:
+                continue
+
+            cells_nearby.append(cell)
+
+        for cell in cells_nearby:
+            if cell.is_ship:
                 return False
 
         return True

@@ -9,7 +9,7 @@ from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 from objects.player import Player
 from states.states import get_or_add_state
 
-ships: list[int] = [4, 3, 3, 2, 2, 2, 1, 1, 1, 1]
+ships: list[str] = ['first_4', 'first_3', 'second_3', 'first_2', 'second_2', 'third_2', 'first_1', 'second_1', 'third_1', 'fourth_1']
 
 
 class Session(threading.Thread):
@@ -49,51 +49,69 @@ class Session(threading.Thread):
         """
         for player in self.players:
             player_state = get_or_add_state(player.object.id)
-            player_state.name = 'setting_ship_position' + str(ships[0])
-            self.bot.send_message(player.object.id, 'Установка корабля с 4-мя клетками.')
-            self.bot.send_message(player.object.id, 'Выберите клетку.')
+            player_state.name = 'setting_ship_position_' + ships[0]
+            self.bot.send_message(player.object.id, 'Установка 4 размерного корабля')
+            self.bot.send_message(player.object.id, 'Выберите клетку')
 
         while not self.is_everyone_ready():
             time.sleep(1)
 
             for player in self.players:
                 player_state = get_or_add_state(player.object.id)
-
-                for ship_size in ships:
-                    if player_state.name == 'check_ship_position' + '_' + str(ship_size):
+                for count, ship in enumerate(ships):
+                    if player_state.name.startswith('check_ship_position'):
                         position = player_state.messages.get('position')
                         try:
                             cell = player.get_cell(position)
                         except PositionError:
                             self.bot.send_message(player.object.id, 'Неверная клетка')
-                            continue
+                            player_state.name = 'setting_ship_position_' + ship
+                            break
 
-                        if player.validate_cell(cell):
-                            player_state.name = 'setting_ship_direction' + '_' + str(ship_size)
-                            self.bot.send_message(player.object.id, 'Выберите направление')
+                        if player.valid_cell(cell):
 
-                    elif player_state.name == 'check_ship_direction' + '_' + str(ship_size):
+                            if player.all_ships_on_field():
+                                self.bot.send_message(player.object.id, 'Вы готовы к игре. Дождитесь всех игроков.')
+                                player.ready = True
+
+                            elif player_state.name.endswith(('first_1', 'second_1', 'third_1')):
+                                next_ship = ships[count + 1]
+                                player_state.name = 'setting_ship_position_' + next_ship
+                                self.bot.send_message(player.object.id, f'Установка {next_ship[-1]} размерного корабля')
+                                self.bot.send_message(player.object.id, 'Выберите клетку')
+
+                            else:
+                                player_state.name = 'setting_ship_direction_' + ship
+                                self.bot.send_message(player.object.id, 'Выберите направление')
+
+                        else:
+                            player_state.name = 'setting_ship_position_' + ship
+                            self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
+
+                    elif player_state.name.startswith('check_ship_direction'):
                         position = player_state.messages.get('position')
                         direction = player_state.messages.get('direction')
 
                         try:
-                            player.set_ship(position, int(ship_size), direction)
-                        except (PositionError, ShipNearbyError) as exc:
+                            player.set_ship(position, int(ship[-1]), direction)
+                        except (PositionError, ShipNearbyError, ValueError) as exc:
                             if isinstance(exc, PositionError):
                                 self.bot.send_message(player.object.id, 'Нельзя поставить корабль на несуществующую клетку. Попробуйте снова.')
 
                             elif isinstance(exc, ShipNearbyError):
                                 self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
 
-                            player_state.name = 'setting_ship_position' + '_' + str(ship_size)
-                            self.bot.send_message(player.object.id, 'Выберите клетку.')
+                            elif isinstance(exc, ValueError):
+                                self.bot.send_message(player.object.id, 'Передано неверное направление.')
+
+                            player_state.name = 'setting_ship_direction_' + ship
+                            self.bot.send_message(player.object.id, 'Выберите направление')
                             continue
 
-                        if player.all_ships_on_field():
-                            self.bot.send_message(player.object.id, 'Вы готовы к игре. Дождитесь всех игроков.')
-                            player.ready = True
-                        else:
-                            player_state.name = 'setting_ship_position_' + str(ship_size + 1)
+                        next_ship = ships[count + 1]
+                        player_state.name = 'setting_ship_position_' + next_ship
+                        self.bot.send_message(player.object.id, f'Установка {next_ship[-1]} размерного корабля')
+                        self.bot.send_message(player.object.id, 'Выберите клетку')
 
         # Всем игрокам в сессии выставляем состояние waiting_for_move.
         for player in self.players:

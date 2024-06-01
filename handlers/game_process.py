@@ -14,13 +14,13 @@ def load(bot: TeleBot):
         # Достаем состояние пользователя.
         user_state = get_or_add_state(message.from_user.id)
 
-        for ship_size in ships:
-            if user_state.name == 'setting_ship_position' + '_' + ship_size:
-                user_state.name = 'check_ship_position' + '_' + ship_size
+        for ship in ships:
+            if user_state.name == 'setting_ship_position_' + ship:
+                user_state.name = 'check_ship_position_' + ship
                 user_state.messages['position'] = message.text
 
-            elif user_state.name == 'setting_ship_direction' + '_' + ship_size:
-                user_state.name = 'check_ship_direction' + '_' + ship_size
+            elif user_state.name == 'setting_ship_direction_' + ship:
+                user_state.name = 'check_ship_direction_' + ship
                 user_state.messages['direction'] = message.text
 
         # Если состояние waiting_for_move, то удаляем его сообщения, чтобы не засорять чат.
