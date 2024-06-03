@@ -1,6 +1,7 @@
 from telebot import TeleBot
 from telebot.types import Message, CallbackQuery
 
+from objects.player import row_letters, col_numbers
 from states.states import get_or_add_state
 from threads.session import ships
 
@@ -28,6 +29,24 @@ def load(bot: TeleBot):
         elif user_state.name == 'making_move':
             user_state.name = 'check_move'
             user_state.message = message
+
+    def validate_positions_callback(callback: CallbackQuery) -> bool:
+        positions = []
+        for row in row_letters:
+            for col in col_numbers:
+                positions.append(row + col)
+
+        if callback.data in positions:
+            return True
+        return False
+
+    @bot.callback_query_handler(validate_positions_callback)
+    def handle_position_buttons(callback: CallbackQuery):
+        user_state = get_or_add_state(callback.from_user.id)
+        for ship in ships:
+            if user_state.name == 'setting_ship_position_' + ship:
+                user_state.name = 'check_ship_position_' + ship
+                user_state.messages['position'] = callback.data
 
     @bot.callback_query_handler(lambda callback: callback.data in ('top', 'right', 'bottom', 'left'))
     def handle_direction_buttons(callback: CallbackQuery):

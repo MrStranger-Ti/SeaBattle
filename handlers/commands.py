@@ -51,7 +51,6 @@ def load(bot: TeleBot):
         # После этого сессия увидит, что у игрока сменилось состояние и исключит его.
         if user_state.in_game:
             user_state.name = 'leaving_game'
-            bot.send_message(message.from_user.id, 'Вы покинули игру.')
 
         # Если игрок находится в очереди подбора игроков, то удаляем его из очереди.
         for user in PLAYERS_QUEUE:

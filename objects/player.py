@@ -10,11 +10,12 @@ from telebot.types import User
 
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 
-row_letters = ascii_uppercase[:10]
-col_numbers = [str(num) for num in range(1, 11)]
+row_letters = ascii_uppercase[:6]
+col_numbers = [str(num) for num in range(1, 7)]
 
 
 class Player:
+
     """
     Сущность игрока.
 
@@ -30,7 +31,6 @@ class Player:
         field_img (Image.Image): Нарисованное пустое поле с помощью Pillow
         ships (dict[int: int]): какие корабли остались и сколько
     """
-
     def __init__(self, user: User):
         self.object: User = user
         self.opponent: Player | None = None
@@ -40,15 +40,82 @@ class Player:
         self.field_img: Image.Image = self.draw_empty_field()
         self.ships: dict[int: int] = {}
 
-    def draw_player_field(self, is_opponent: bool = False) -> io.BytesIO:
+    @staticmethod
+    def create_field() -> list[list['Cell']]:
+        """
+        Генерация поля.
+
+        Поле является вложенным списком. Размер 10X10.
+        """
+        return [
+            [Cell(row_letters[row] + str(col + 1)) for col in range(6)]
+            for row in range(6)
+        ]
+
+    @staticmethod
+    def draw_empty_field() -> Image.Image:
+        img = Image.new('RGBA', (220, 220), 'white')
+        pencil = ImageDraw.Draw(img)
+
+        gap = 30.5
+        dist_edge_to_symbols = 5
+        dist_edge_to_first_symbol = 29
+        font = PIL.ImageFont.truetype('arial', size=18)
+
+        for num, letter in enumerate(row_letters):
+            color = 'black'
+
+            pencil.text(
+                xy=(dist_edge_to_symbols, dist_edge_to_first_symbol + (num * gap)),
+                text=letter,
+                font=font,
+                fill=color,
+            )
+            pencil.text(
+                xy=(dist_edge_to_first_symbol + (num * gap), dist_edge_to_symbols),
+                text=str(num + 1),
+                font=font,
+                fill=color,
+            )
+
+        width = 180
+        height = 180
+        x0 = 20
+        y0 = 25
+        x1 = width + x0
+        y1 = height + y0
+        pencil.rectangle((x0, y0, x1, y1), outline='black')
+        cell_size = width // 6
+        for num in range(len(row_letters) - 1):
+            num += 1
+            horizontal_lines_coords = [
+                (x0, y0 + (num * cell_size)),
+                (x1, y0 + (num * cell_size)),
+            ]
+            vertical_lines_coords = [
+                (x0 + (num * cell_size), y0),
+                (x0 + (num * cell_size), y1),
+            ]
+
+            pencil.line(horizontal_lines_coords, fill='black', width=1)
+            pencil.line(vertical_lines_coords, fill='black', width=1)
+
+        return img
+
+    def draw_player_field(self, opponent: bool = False) -> io.BytesIO:
+        if opponent:
+            field = self.opponent.field
+        else:
+            field = self.field
+
         copied_field = self.field_img.copy()
         pencil = ImageDraw.Draw(copied_field)
 
         x_rectangle = 20
         y_rectangle = 25
-        for row_num, row in enumerate(self.field):
+        for row_num, row in enumerate(field):
             for col_num, cell in enumerate(row):
-                cell_size = 25
+                cell_size = 30
                 cell_x = x_rectangle + col_num * cell_size
                 cell_y = y_rectangle + row_num * cell_size
                 rectangle_coords = [
@@ -57,7 +124,7 @@ class Player:
                 ]
 
                 color = None
-                if is_opponent:
+                if opponent:
                     if cell.opened and cell.is_ship:
                         color = 'green'
 
@@ -85,94 +152,6 @@ class Player:
         img.save(bio, 'PNG')
         bio.seek(0)
         return bio
-
-    @staticmethod
-    def draw_empty_field() -> Image.Image:
-        img = Image.new('RGBA', (280, 280), 'white')
-        pencil = ImageDraw.Draw(img)
-
-        gap = 25
-        dist_edge_to_symbols = 5
-        dist_edge_to_first_symbol = 29
-        font = PIL.ImageFont.truetype('arial', size=15)
-
-        for num, letter in enumerate(row_letters):
-            color = 'black'
-
-            pencil.text(
-                xy=(dist_edge_to_symbols, dist_edge_to_first_symbol + (num * gap)),
-                text=letter,
-                font=font,
-                fill=color,
-            )
-            pencil.text(
-                xy=(dist_edge_to_first_symbol + (num * gap), dist_edge_to_symbols),
-                text=str(num + 1),
-                font=font,
-                fill=color,
-            )
-
-        width = 250
-        height = 250
-        x0 = 20
-        y0 = 25
-        x1 = width + x0
-        y1 = height + y0
-        pencil.rectangle((x0, y0, x1, y1), outline='black')
-        cell_size = width // 10
-        for num in range(len(row_letters) - 1):
-            num += 1
-            horizontal_lines_coords = [
-                (x0, y0 + (num * cell_size)),
-                (x1, y0 + (num * cell_size)),
-            ]
-            vertical_lines_coords = [
-                (x0 + (num * cell_size), y0),
-                (x0 + (num * cell_size), y1),
-            ]
-
-            pencil.line(horizontal_lines_coords, fill='black', width=1)
-            pencil.line(vertical_lines_coords, fill='black', width=1)
-
-        return img
-
-    def all_ships_on_field(self) -> bool:
-        valid_ships_count = (1, 2, 3, 4)
-        if tuple(self.ships.values()) == valid_ships_count:
-            return True
-        return False
-
-    @staticmethod
-    def create_field() -> list[list['Cell']]:
-        """
-        Генерация поля.
-
-        Поле является вложенным списком. Размер 10X10.
-        """
-        return [
-            [Cell(row_letters[row] + str(col + 1)) for col in range(10)]
-            for row in range(10)
-        ]
-
-    @staticmethod
-    def validate_position(position: str) -> bool:
-        """
-        Валидация позиции ячейки.
-
-        Для валидации используется регулярное выражение.
-
-        Примеры:
-
-        e8 - верно
-        d10 - верно
-        d11 - неверно
-        x1 - неверно
-        f0 - неверно
-        """
-        if not re.fullmatch(r'[a-jA-J][1-9]0?', position):
-            return False
-
-        return True
 
     def get_cell(self, position: str) -> 'Cell':
         """
@@ -246,35 +225,6 @@ class Player:
 
         self.ships[size] = self.ships.get(size, 0) + 1
 
-    def valid_cell(self, cell: 'Cell') -> bool:
-        if cell.is_ship:
-            return False
-
-        ind_row = row_letters.index(cell.position[0])
-        ind_col = col_numbers.index(cell.position[1:])
-        indices = [
-            (ind_row - 1, ind_col),
-            (ind_row - 1, ind_col + 1),
-            (ind_row, ind_col + 1),
-            (ind_row + 1, ind_col + 1),
-            (ind_row + 1, ind_col),
-            (ind_row + 1, ind_col - 1),
-            (ind_row, ind_col - 1),
-            (ind_row - 1, ind_col - 1),
-        ]
-
-        cells_nearby = []
-        for ind_row, ind_col in indices:
-            if 0 <= ind_row <= len(row_letters) - 1 and 0 <= ind_col <= len(col_numbers) - 1:
-                cell = self.field[ind_row][ind_col]
-                cells_nearby.append(cell)
-
-        for cell in cells_nearby:
-            if cell.is_ship:
-                return False
-
-        return True
-
     def open_cell(self, position: str) -> bool:
         """
         Открытие ячейки.
@@ -305,6 +255,61 @@ class Player:
         if self.opponent:
             return self.opponent.open_cell(position)
         return False
+
+    def all_ships_on_field(self) -> bool:
+        valid_ships_count = (1, 1, 2)
+        if tuple(self.ships.values()) == valid_ships_count:
+            return True
+        return False
+
+    @staticmethod
+    def validate_position(position: str) -> bool:
+        """
+        Валидация позиции ячейки.
+
+        Для валидации используется регулярное выражение.
+
+        Примеры:
+
+        e8 - верно
+        d10 - верно
+        d11 - неверно
+        x1 - неверно
+        f0 - неверно
+        """
+        if not re.fullmatch(r'[a-fA-F][1-6]', position):
+            return False
+
+        return True
+
+    def valid_cell(self, cell: 'Cell') -> bool:
+        if cell.is_ship:
+            return False
+
+        ind_row = row_letters.index(cell.position[0])
+        ind_col = col_numbers.index(cell.position[1:])
+        indices = [
+            (ind_row - 1, ind_col),
+            (ind_row - 1, ind_col + 1),
+            (ind_row, ind_col + 1),
+            (ind_row + 1, ind_col + 1),
+            (ind_row + 1, ind_col),
+            (ind_row + 1, ind_col - 1),
+            (ind_row, ind_col - 1),
+            (ind_row - 1, ind_col - 1),
+        ]
+
+        cells_nearby = []
+        for ind_row, ind_col in indices:
+            if 0 <= ind_row <= len(row_letters) - 1 and 0 <= ind_col <= len(col_numbers) - 1:
+                cell = self.field[ind_row][ind_col]
+                cells_nearby.append(cell)
+
+        for cell in cells_nearby:
+            if cell.is_ship:
+                return False
+
+        return True
 
     def is_loser(self):
         for row in self.field:
