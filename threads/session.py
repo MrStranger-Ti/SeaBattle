@@ -5,11 +5,23 @@ from datetime import datetime, timedelta
 
 import telebot
 
+from keyboards.inline.game import get_direction_keyboard
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 from objects.player import Player
 from states.states import get_or_add_state
 
-ships: list[str] = ['first_4', 'first_3', 'second_3', 'first_2', 'second_2', 'third_2', 'first_1', 'second_1', 'third_1', 'fourth_1']
+ships: list[str] = [
+    'first_4',
+    'first_3',
+    'second_3',
+    'first_2',
+    'second_2',
+    'third_2',
+    'first_1',
+    'second_1',
+    'third_1',
+    'fourth_1',
+]
 
 
 class Session(threading.Thread):
@@ -19,14 +31,15 @@ class Session(threading.Thread):
     При каждом запуске игры создается сессия, в которой идет игра до какого-то результата.
 
     Attributes:
-        is_running (bool): выполнять ли поток (сессию)
+        running (bool): выполняться ли потоку (сессию)
         bot (telebot.TeleBot): основной объект бота из библиотеки telebot
         players (list[Player]): список из игроков
         leading (Player): ведущий игрок
     """
+
     def __init__(self, bot: telebot.TeleBot, players: list[telebot.types.User]):
         super().__init__()
-        self.is_running: bool = True
+        self.running: bool = True
         self.bot: telebot.TeleBot = bot
         self.players: list[Player] = [Player(user) for user in players]
         self.leading: Player | None = None
@@ -39,7 +52,7 @@ class Session(threading.Thread):
         self.start_game()
 
         # контроль игры
-        while self.is_running:
+        while self.running:
             time.sleep(1)
             self.update()
 
@@ -51,16 +64,17 @@ class Session(threading.Thread):
             player_state = get_or_add_state(player.object.id)
             player_state.name = 'setting_ship_position_' + ships[0]
             self.bot.send_message(player.object.id, 'Установка 4 размерного корабля')
+            self.bot.send_photo(player.object.id, player.draw_player_field())
             self.bot.send_message(player.object.id, 'Выберите клетку')
 
         while not self.is_everyone_ready():
             time.sleep(1)
-
             for player in self.players:
                 player_state = get_or_add_state(player.object.id)
+                position = player_state.messages.get('position')
+                direction = player_state.messages.get('direction')
                 for count, ship in enumerate(ships):
-                    if player_state.name.startswith('check_ship_position'):
-                        position = player_state.messages.get('position')
+                    if player_state.name == 'check_ship_position_' + ship:
                         try:
                             cell = player.get_cell(position)
                         except PositionError:
@@ -68,30 +82,34 @@ class Session(threading.Thread):
                             player_state.name = 'setting_ship_position_' + ship
                             break
 
-                        if player.valid_cell(cell):
+                        if not player.valid_cell(cell):
+                            player_state.name = 'setting_ship_position_' + ship
+                            self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
+                            break
+
+                        elif player_state.name.endswith('1'):
+                            try:
+                                player.set_ship(position, int(ship[-1]))
+                            except ShipNearbyError:
+                                player_state.name = 'setting_ship_position_' + ship
+                                self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
 
                             if player.all_ships_on_field():
-                                self.bot.send_message(player.object.id, 'Вы готовы к игре. Дождитесь всех игроков.')
                                 player.ready = True
-
-                            elif player_state.name.endswith(('first_1', 'second_1', 'third_1')):
+                                player_state.name = 'waiting_for_players'
+                                self.bot.send_message(player.object.id, 'Вы готовы к игре. Дождитесь всех игроков.')
+                                self.bot.send_photo(player.object.id, player.draw_player_field())
+                            else:
                                 next_ship = ships[count + 1]
                                 player_state.name = 'setting_ship_position_' + next_ship
                                 self.bot.send_message(player.object.id, f'Установка {next_ship[-1]} размерного корабля')
+                                self.bot.send_photo(player.object.id, player.draw_player_field())
                                 self.bot.send_message(player.object.id, 'Выберите клетку')
-
-                            else:
-                                player_state.name = 'setting_ship_direction_' + ship
-                                self.bot.send_message(player.object.id, 'Выберите направление')
-
                         else:
-                            player_state.name = 'setting_ship_position_' + ship
-                            self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
+                            player_state.name = 'setting_ship_direction_' + ship
+                            self.bot.send_message(player.object.id, 'Выберите направление', reply_markup=get_direction_keyboard())
 
-                    elif player_state.name.startswith('check_ship_direction'):
-                        position = player_state.messages.get('position')
-                        direction = player_state.messages.get('direction')
-
+                    elif player_state.name == 'check_ship_direction_' + ship:
                         try:
                             player.set_ship(position, int(ship[-1]), direction)
                         except (PositionError, ShipNearbyError, ValueError) as exc:
@@ -105,12 +123,13 @@ class Session(threading.Thread):
                                 self.bot.send_message(player.object.id, 'Передано неверное направление.')
 
                             player_state.name = 'setting_ship_direction_' + ship
-                            self.bot.send_message(player.object.id, 'Выберите направление')
-                            continue
+                            self.bot.send_message(player.object.id, 'Выберите направление', reply_markup=get_direction_keyboard())
+                            break
 
                         next_ship = ships[count + 1]
                         player_state.name = 'setting_ship_position_' + next_ship
                         self.bot.send_message(player.object.id, f'Установка {next_ship[-1]} размерного корабля')
+                        self.bot.send_photo(player.object.id, player.draw_player_field())
                         self.bot.send_message(player.object.id, 'Выберите клетку')
 
         # Всем игрокам в сессии выставляем состояние waiting_for_move.
@@ -140,7 +159,7 @@ class Session(threading.Thread):
         # Выставляем ведущему игроку состояние making_move и просим сделать ход.
         leading_player_state = get_or_add_state(self.leading.object.id)
         leading_player_state.name = 'making_move'
-        self.ask_for_a_position()
+        self.ask_to_make_a_move()
 
     def update(self) -> None:
         """
@@ -174,13 +193,14 @@ class Session(threading.Thread):
                 # Если клетки, который ввел пользователь, не существует,
                 # то отправляем ему соответствующее сообщение.
                 if isinstance(exc, PositionError):
-                    self.bot.send_message(self.leading, 'Неверная клетка.')
+                    self.bot.send_message(self.leading.object.id, 'Неверная клетка.')
 
                 # Если клетка, который ввел пользователь, уже открыта,
                 # то отправляем ему соответствующее сообщение.
                 if isinstance(exc, CellOpenedError):
-                    self.bot.send_message(self.leading, 'Эта клетка уже открыта.')
+                    self.bot.send_message(self.leading.object.id, 'Эта клетка уже открыта.')
 
+                self.ask_to_make_a_move()
                 return
 
             # Отправляем пользователю сообщение, попал он или нет.
@@ -189,11 +209,18 @@ class Session(threading.Thread):
             else:
                 self.bot.send_message(self.leading.object.id, 'Вы не попали.')
 
+            self.bot.send_photo(player.object.id, player.opponent.draw_player_field(is_opponent=True))
+
             # Если игрок проиграл, то отправляем соответствующее сообщение и удаляем его из сессии.
-            ...
+            opponent = self.leading.opponent
+            if opponent.lost:
+                self.bot.send_photo(opponent.object.id, opponent.draw_player_field())
+                self.bot.send_message(opponent.object.id, 'Вы проиграли.')
+                self.remove_player(opponent)
 
             # Изменяем ведущего игрока.
-            self.change_leading()
+            if len(self.players) > 1:
+                self.change_leading()
 
     def get_opponent(self, player: Player) -> Player:
         """
@@ -205,11 +232,12 @@ class Session(threading.Thread):
         ind = self.players.index(player)
         return self.players[ind + 1]
 
-    def ask_for_a_position(self) -> None:
+    def ask_to_make_a_move(self) -> None:
         """
         Отправка игроку сообщения о предложении выбрать клетку.
         """
-        self.bot.send_message(self.leading, 'Выберите клетку.')
+        self.bot.send_photo(self.leading.object.id, self.leading.opponent.draw_player_field(is_opponent=True))
+        self.bot.send_message(self.leading.object.id, 'Выберите клетку.')
 
     def change_leading(self) -> None:
         """
@@ -227,18 +255,33 @@ class Session(threading.Thread):
         # У нового ведущего игрока изменяем состояние на making_move
         new_leading_player_state = get_or_add_state(self.leading.object.id)
         new_leading_player_state.name = 'making_move'
-        self.ask_for_a_position()
+        self.ask_to_make_a_move()
 
     def remove_player(self, player: Player) -> None:
         """
         Удаление игрока из сессии.
         """
-        # После удаления выставляем состояние пользователя на main и меняем флаг in_game на False
+        # Перед удалением меняем оппонента у позади стоящего игрока.
+        ind_back_player = self.players.index(player) - 1
+        back_player = self.players[ind_back_player]
+        back_player.opponent = player.opponent
+
         self.players.remove(player)
+
+        # После удаления выставляем состояние пользователя на main и меняем флаг in_game на False
         state = get_or_add_state(player.object.id)
         state.name = 'main'
         state.in_game = False
         self.check_number_of_players()
+
+    def check_number_of_players(self):
+        """
+        Проверка числа игроков в сессии.
+
+        Если игроков в сессии меньше 2, то заканчиваем игру и подводим итоги.
+        """
+        if len(self.players) < 2:
+            self.finish_game()
 
     def finish_game(self) -> None:
         """
@@ -257,19 +300,10 @@ class Session(threading.Thread):
 
         self.stop_session()
 
-    def check_number_of_players(self):
-        """
-        Проверка числа игроков в сессии.
-
-        Если игроков в сессии меньше 2, то заканчиваем игру и подводим итоги.
-        """
-        if len(self.players) < 2:
-            self.finish_game()
-
     def stop_session(self) -> None:
         """
         Завершение сессии.
 
         Завершаем цикл, изменив self.is_running на False.
         """
-        self.is_running = False
+        self.running = False
