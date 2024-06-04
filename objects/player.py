@@ -263,7 +263,8 @@ class Player:
                 nearby_ship_cells.update(nearby_cells)
 
             for nearby_ship_cell in nearby_ship_cells:
-                nearby_ship_cell.opened = True
+                if nearby_ship_cell:
+                    nearby_ship_cell.opened = True
         else:
             cells_nearby = self.get_cells_nearby(cell)
             for num, nearby_cell in enumerate(cells_nearby):
