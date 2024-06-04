@@ -1,7 +1,8 @@
 from telebot import TeleBot
 from telebot.types import Message
 
-from main import PLAYERS_QUEUE, check_queue
+from main import check_queue
+from objects.collections import PLAYERS_QUEUE
 from states.states import get_or_add_state
 
 

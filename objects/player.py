@@ -1,5 +1,6 @@
 import io
 import re
+from typing import Optional
 
 import PIL
 
@@ -8,6 +9,7 @@ from string import ascii_uppercase
 from PIL import ImageDraw, Image, ImageFont
 from telebot.types import User
 
+from objects.collections import ships
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 
 row_letters = ascii_uppercase[:6]
@@ -15,7 +17,6 @@ col_numbers = [str(num) for num in range(1, 7)]
 
 
 class Player:
-
     """
     Сущность игрока.
 
@@ -29,16 +30,19 @@ class Player:
         lost (bool): проиграл ли игрок или нет
         field (list[list[Cell]]): поле игрока
         field_img (Image.Image): Нарисованное пустое поле с помощью Pillow
-        ships (dict[int: int]): какие корабли остались и сколько
+        ships (dict[int: list[Cell]): какие корабли остались и сколько
     """
     def __init__(self, user: User):
         self.object: User = user
-        self.opponent: Player | None = None
-        self.ready: bool | None = None
+        self.opponent: Optional[Player] = None
+        self.ready: Optional[bool] = None
         self.lost: bool = False
         self.field: list[list[Cell]] = self.create_field()
         self.field_img: Image.Image = self.draw_empty_field()
-        self.ships: dict[int: int] = {}
+        self.ships: dict[str: list['Cell']] = {
+            name: []
+            for name in ships
+        }
 
     @staticmethod
     def create_field() -> list[list['Cell']]:
@@ -166,7 +170,7 @@ class Player:
         col = int(position[1:]) - 1
         return self.field[row][col]
 
-    def set_ship(self, position: str, size: int, direction: str | None = None) -> None:
+    def set_ship(self, position: str, name: str, direction: Optional[str] = None) -> None:
         """
         Установка корабля по переданной позиции.
         """
@@ -176,6 +180,7 @@ class Player:
         if direction:
             direction = direction.lower()
 
+        size = int(name[-1])
         cell = self.get_cell(position)
         cells = [cell]
         cur_position = cell.position
@@ -222,8 +227,7 @@ class Player:
 
         for cell in cells:
             cell.is_ship = True
-
-        self.ships[size] = self.ships.get(size, 0) + 1
+            self.ships.get(name).append(cell)
 
     def open_cell(self, position: str) -> bool:
         """
@@ -238,12 +242,33 @@ class Player:
             raise CellOpenedError()
 
         cell.opened = True
+        self.open_unnecessary_cells(cell)
 
         # Если у игрока не осталось кораблей, то меняем self.lost на True.
         if self.is_loser():
             self.lost = True
 
         return cell.is_ship
+
+    def open_unnecessary_cells(self, cell: 'Cell') -> None:
+        if not cell.is_ship:
+            return
+
+        ship_opened = self.ship_opened(cell)
+        if ship_opened:
+            ship_cells = self.get_ship_cells(cell)
+            nearby_ship_cells = set()
+            for cell in ship_cells:
+                nearby_cells = self.get_cells_nearby(cell)
+                nearby_ship_cells.update(nearby_cells)
+
+            for nearby_ship_cell in nearby_ship_cells:
+                nearby_ship_cell.opened = True
+        else:
+            cells_nearby = self.get_cells_nearby(cell)
+            for num, nearby_cell in enumerate(cells_nearby):
+                if nearby_cell and (num % 2 == 0 or ship_opened):
+                    nearby_cell.opened = True
 
     def open_opponent_cell(self, position: str) -> bool:
         """
@@ -256,11 +281,50 @@ class Player:
             return self.opponent.open_cell(position)
         return False
 
-    def all_ships_on_field(self) -> bool:
-        valid_ships_count = (1, 1, 2)
-        if tuple(self.ships.values()) == valid_ships_count:
-            return True
+    def get_ship_cells(self, cell: 'Cell') -> list['Cell']:
+        for ship_cells in self.ships.values():
+            if cell in ship_cells:
+                return ship_cells
+
+        return list()
+
+    def get_cells_nearby(self, cell: 'Cell') -> list[Optional['Cell']]:
+        ind_row = row_letters.index(cell.position[0])
+        ind_col = col_numbers.index(cell.position[1:])
+        indices = [
+            (ind_row - 1, ind_col - 1),
+            (ind_row - 1, ind_col),
+            (ind_row - 1, ind_col + 1),
+            (ind_row, ind_col + 1),
+            (ind_row + 1, ind_col + 1),
+            (ind_row + 1, ind_col),
+            (ind_row + 1, ind_col - 1),
+            (ind_row, ind_col - 1),
+        ]
+
+        cells_nearby = []
+        for ind_row, ind_col in indices:
+            if 0 <= ind_row <= len(row_letters) - 1 and 0 <= ind_col <= len(col_numbers) - 1:
+                cell = self.field[ind_row][ind_col]
+                cells_nearby.append(cell)
+            else:
+                cells_nearby.append(None)
+
+        return cells_nearby
+
+    def ship_opened(self, cell: 'Cell') -> bool:
+        for cells in self.ships.values():
+            if cell in cells and all(ship_cell.is_ship and ship_cell.opened for ship_cell in cells):
+                return True
+
         return False
+
+    def all_ships_on_field(self) -> bool:
+        for name, cells in self.ships.items():
+            if len(cells) != int(name[-1]):
+                return False
+
+        return True
 
     @staticmethod
     def validate_position(position: str) -> bool:
@@ -286,27 +350,9 @@ class Player:
         if cell.is_ship:
             return False
 
-        ind_row = row_letters.index(cell.position[0])
-        ind_col = col_numbers.index(cell.position[1:])
-        indices = [
-            (ind_row - 1, ind_col),
-            (ind_row - 1, ind_col + 1),
-            (ind_row, ind_col + 1),
-            (ind_row + 1, ind_col + 1),
-            (ind_row + 1, ind_col),
-            (ind_row + 1, ind_col - 1),
-            (ind_row, ind_col - 1),
-            (ind_row - 1, ind_col - 1),
-        ]
-
-        cells_nearby = []
-        for ind_row, ind_col in indices:
-            if 0 <= ind_row <= len(row_letters) - 1 and 0 <= ind_col <= len(col_numbers) - 1:
-                cell = self.field[ind_row][ind_col]
-                cells_nearby.append(cell)
-
+        cells_nearby = self.get_cells_nearby(cell)
         for cell in cells_nearby:
-            if cell.is_ship:
+            if cell and cell.is_ship:
                 return False
 
         return True

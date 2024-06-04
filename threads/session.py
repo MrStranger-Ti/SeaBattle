@@ -2,20 +2,15 @@ import random
 import threading
 import time
 from datetime import datetime, timedelta
+from typing import Optional
 
 import telebot
 
 from keyboards.inline.game import get_direction_keyboard, get_positions_keyboard
+from objects.collections import ships
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 from objects.player import Player
 from states.states import get_or_add_state
-
-ships: list[str] = [
-    'first_3',
-    'first_2',
-    'first_1',
-    'second_1',
-]
 
 
 class Session(threading.Thread):
@@ -36,7 +31,7 @@ class Session(threading.Thread):
         self.running: bool = True
         self.bot: telebot.TeleBot = bot
         self.players: list[Player] = [Player(user) for user in players]
-        self.leading: Player | None = None
+        self.leading: Optional[Player] = None
 
     def run(self) -> None:
         # подготовка к игре
@@ -51,7 +46,7 @@ class Session(threading.Thread):
             time.sleep(1)
             self.update()
 
-    def prepare(self):
+    def prepare(self) -> None:
         """
         Подготовка к игре.
         """
@@ -86,7 +81,7 @@ class Session(threading.Thread):
 
                         elif player_state.name.endswith('1'):
                             try:
-                                player.set_ship(position, int(ship[-1]))
+                                player.set_ship(position, ship)
                             except ShipNearbyError:
                                 player_state.name = 'setting_ship_position_' + ship
                                 self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
@@ -108,7 +103,7 @@ class Session(threading.Thread):
 
                     elif player_state.name == 'check_ship_direction_' + ship:
                         try:
-                            player.set_ship(position, int(ship[-1]), direction)
+                            player.set_ship(position, ship, direction=direction)
                         except (PositionError, ShipNearbyError, ValueError) as exc:
                             if isinstance(exc, PositionError):
                                 self.bot.send_message(player.object.id, 'Нельзя поставить корабль на несуществующую клетку. Попробуйте снова.')
@@ -158,6 +153,8 @@ class Session(threading.Thread):
         Здесь происходит проверка состояний всех игроков.
         Состояния ведущего игрока проверяются отдельно.
         """
+        self.check_leaving_players()
+
         # Получаем состояние ведущего игрока
         leading_player_state = get_or_add_state(self.leading.object.id)
 
@@ -166,7 +163,7 @@ class Session(threading.Thread):
 
             try:
                 # Пробуем открыть клетку соперника. Если мы успешно ее открыли, то узнаем корабль это или нет.
-                is_ship = self.leading.open_opponent_cell(leading_player_state.message.text)
+                is_ship = self.leading.open_opponent_cell(leading_player_state.messages.get('position'))
             except (PositionError, CellOpenedError) as exc:
 
                 # Так как произошла ошибка, то меняем состояние на making_move,
@@ -276,7 +273,7 @@ class Session(threading.Thread):
 
         self.check_number_of_players()
 
-    def check_number_of_players(self):
+    def check_number_of_players(self) -> None:
         """
         Проверка числа игроков в сессии.
 

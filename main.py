@@ -5,13 +5,12 @@ import os
 import telebot.types
 
 from loader import bot
+from objects.collections import PLAYERS_QUEUE
 from states.states import get_or_add_state
 from threads.session import Session
 
 logging.basicConfig(level='INFO')
 logger = logging.getLogger(__name__)
-
-PLAYERS_QUEUE = []
 
 
 def check_queue() -> None:
