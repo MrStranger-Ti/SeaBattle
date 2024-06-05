@@ -25,7 +25,7 @@ def check_queue() -> None:
     Если игроков достаточное количество, то запускаем с ними сессию.
     """
     # total_players - количество необходимых игроков для создания сессии.
-    total_players = os.getenv('TOTAL_SESSION_PLAYERS', 4)
+    total_players = int(os.getenv('TOTAL_SESSION_PLAYERS', 4))
     if len(PLAYERS_QUEUE) >= total_players:
         for player in PLAYERS_QUEUE[:total_players]:
 

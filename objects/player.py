@@ -49,8 +49,8 @@ class Player:
         :return вложенный список
         """
         return [
-            [Cell(row_letters[row] + str(col + 1)) for col in range(6)]
-            for row in range(6)
+            [Cell(row_letters[row] + str(col + 1)) for col in range(8)]
+            for row in range(8)
         ]
 
     @staticmethod
@@ -61,7 +61,7 @@ class Player:
         :return объект изображения
         """
         # Создание изображения.
-        img = Image.new('RGBA', (220, 220), 'white')
+        img = Image.new('RGBA', (280, 280), 'white')
 
         # Создание объекта для рисования
         pencil = ImageDraw.Draw(img)
@@ -99,13 +99,13 @@ class Player:
         # x0, y0 - координаты верхней левой точки поля;
         # x1, y1 - координаты нижней правой точки поля;
         # cell_size - размер одной ячейки.
-        width = 180
-        height = 180
+        width = 240
+        height = 240
         x0 = 20
         y0 = 25
         x1 = width + x0
         y1 = height + y0
-        cell_size = width // 6
+        cell_size = width // 8
 
         # Отрисовка квадрата.
         pencil.rectangle((x0, y0, x1, y1), outline='black')
@@ -176,10 +176,10 @@ class Player:
                         color = 'red'
 
                     elif cell.is_ship:
-                        color = 'blue'
+                        color = 'yellow'
 
                     elif cell.opened:
-                        color = 'yellow'
+                        color = 'blue'
 
                 # Если color = None, то ячейка остается пустой (без цвета)
                 if color:
@@ -438,7 +438,7 @@ class Player:
 
         :param position: позиция ячейки
         """
-        if not re.fullmatch(r'[a-fA-F][1-6]', position):
+        if not re.fullmatch(r'[a-hA-H][1-8]', position):
             return False
 
         return True
