@@ -3,11 +3,15 @@ import logging
 import os
 
 import telebot.types
+import dotenv
 
 from loader import bot
 from objects.collections import PLAYERS_QUEUE
 from states.states import get_or_add_state
 from threads.session import Session
+
+dotenv.load_dotenv()
+
 
 logging.basicConfig(level='INFO')
 logger = logging.getLogger(__name__)
@@ -21,7 +25,7 @@ def check_queue() -> None:
     Если игроков достаточное количество, то запускаем с ними сессию.
     """
     # total_players - количество необходимых игроков для создания сессии.
-    total_players = 1
+    total_players = os.getenv('TOTAL_SESSION_PLAYERS', 4)
     if len(PLAYERS_QUEUE) >= total_players:
         for player in PLAYERS_QUEUE[:total_players]:
 
