@@ -38,7 +38,7 @@ def check_queue() -> None:
 
 def create_session(players: list[telebot.types.User]):
     """
-    Создание сессии.
+    Создание и запуск сессии.
     """
     session = Session(bot, players)
     session.start()

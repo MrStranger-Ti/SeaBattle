@@ -11,6 +11,8 @@ def load(bot: TeleBot):
     def start(message: Message):
         """
         Обработчик команды /start.
+
+        :param message: сообщение
         """
         bot.send_message(message.from_user.id, f'Привет, {message.from_user.first_name}!')
 
@@ -18,6 +20,8 @@ def load(bot: TeleBot):
     def add_player_to_queue(message: Message):
         """
         Обработчик команды /play.
+
+        :param message: сообщение
         """
         # Получаем все id игроков, которые находятся в очереди.
         players_queue_ids = [user.id for user in PLAYERS_QUEUE]
@@ -45,6 +49,8 @@ def load(bot: TeleBot):
     def leave(message: Message):
         """
         Обработчик команды /leave.
+
+        :param message: сообщение
         """
         user_state = get_or_add_state(message.from_user.id)
 

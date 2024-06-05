@@ -1,7 +1,6 @@
 import random
 import threading
 import time
-from datetime import datetime, timedelta
 from typing import Optional
 
 import telebot
@@ -50,6 +49,7 @@ class Session(threading.Thread):
         """
         Подготовка к игре.
         """
+        # Просим всех игроков установить первый корабль.
         for player in self.players:
             player_state = get_or_add_state(player.object.id)
             player_state.name = 'setting_ship_position_' + ships[0]
@@ -57,6 +57,7 @@ class Session(threading.Thread):
             self.bot.send_photo(player.object.id, player.draw_player_field())
             self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
 
+        # Пока все не будут готовы к игре, игра не начнется.
         while not self.is_everyone_ready():
             time.sleep(1)
 
@@ -204,6 +205,9 @@ class Session(threading.Thread):
                 self.change_leading()
 
     def check_leaving_players(self) -> None:
+        """
+        Проверка игроков, которые хотят выйти из игры.
+        """
         for player in self.players:
             player_state = get_or_add_state(player.object.id)
 
@@ -217,12 +221,14 @@ class Session(threading.Thread):
         Проверка игроков на готовность.
 
         Если все готовы, то запускаем игру.
+
+        :return bool
         """
         return all(player.ready for player in self.players)
 
     def ask_to_make_a_move(self) -> None:
         """
-        Отправка игроку сообщения о предложении выбрать клетку.
+        Отправка игроку сообщения о предложении выбрать клетку, а также его поле оппонента.
         """
         self.bot.send_photo(self.leading.object.id, self.leading.draw_player_field(opponent=True), caption='Поле соперника')
         self.bot.send_message(self.leading.object.id, 'Выберите клетку.', reply_markup=get_positions_keyboard())
@@ -248,6 +254,9 @@ class Session(threading.Thread):
     def get_opponent(self, player: Player) -> Player:
         """
         Получение следующего игрока в списке.
+
+        :param player: игрок, относительно которого нужно получить оппонента
+        :return объект игрока
         """
         if player == self.players[-1]:
             return self.players[0]
@@ -258,6 +267,8 @@ class Session(threading.Thread):
     def remove_player(self, player: Player) -> None:
         """
         Удаление игрока из сессии.
+
+        :param player: игрок, которого нужно удалить
         """
         # Перед удалением меняем оппонента у позади стоящего игрока.
         ind_back_player = self.players.index(player) - 1
@@ -294,7 +305,6 @@ class Session(threading.Thread):
             winner_state = get_or_add_state(winner.object.id)
             winner_state.name = 'main'
             winner_state.in_game = False
-
             self.bot.send_message(winner.object.id, 'Поздравляем, вы выиграли!')
 
         self.stop_session()
