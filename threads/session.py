@@ -196,12 +196,11 @@ class Session(threading.Thread):
             # Если игрок проиграл, то отправляем соответствующее сообщение и удаляем его из сессии.
             opponent = self.leading.opponent
             if opponent.lost:
-                self.bot.send_photo(opponent.object.id, opponent.draw_player_field())
                 self.bot.send_message(opponent.object.id, 'Вы проиграли.')
                 self.remove_player(opponent)
 
-            # Изменяем ведущего игрока.
-            if len(self.players) > 1:
+            # Изменяем ведущего игрока, если игроков в сессии больше одного и если он не попал.
+            if len(self.players) > 1 and not is_ship:
                 self.change_leading()
 
     def check_leaving_players(self) -> None:
