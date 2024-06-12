@@ -127,6 +127,12 @@ class Session(threading.Thread):
                         self.bot.send_photo(player.object.id, player.draw_player_field())
                         self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
 
+                    elif player_state.name == 'cancel_ship_direction_' + ship:
+                        player_state.name = 'setting_ship_position_' + ship
+                        self.bot.send_message(player.object.id, f'Установка {ship[-1]} размерного корабля')
+                        self.bot.send_photo(player.object.id, player.draw_player_field())
+                        self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
+
         # Всем игрокам в сессии выставляем состояние waiting_for_move.
         for player in self.players:
             player.opponent = self.get_opponent(player)

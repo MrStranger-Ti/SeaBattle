@@ -40,6 +40,7 @@ def get_direction_keyboard() -> InlineKeyboardMarkup:
         ('вправо', 'right'),
         ('вверх', 'top'),
         ('вниз', 'bottom'),
+        ('назад', 'cancel'),
     ]
     buttons = []
     for text, data in choices:
@@ -48,5 +49,6 @@ def get_direction_keyboard() -> InlineKeyboardMarkup:
 
     keyboard.row(buttons[0], buttons[1])
     keyboard.row(buttons[2], buttons[3])
+    keyboard.row(buttons[4])
 
     return keyboard

@@ -38,7 +38,7 @@ def load(bot: TeleBot):
         return False
 
     @bot.callback_query_handler(validate_positions_callback)
-    def handle_position_buttons(callback: CallbackQuery):
+    def process_position_buttons(callback: CallbackQuery):
         """
         Обработчик кнопок позиций ячеек.
 
@@ -57,8 +57,8 @@ def load(bot: TeleBot):
                 user_state.name = 'check_move'
                 user_state.messages['position'] = callback.data
 
-    @bot.callback_query_handler(lambda callback: callback.data in ('top', 'right', 'bottom', 'left'))
-    def handle_direction_buttons(callback: CallbackQuery):
+    @bot.callback_query_handler(lambda callback: callback.data in ('top', 'right', 'bottom', 'left', 'cancel'))
+    def process_direction_buttons(callback: CallbackQuery):
         """
         Обработчик кнопок направления.
 
@@ -69,5 +69,10 @@ def load(bot: TeleBot):
 
             # Обработка направления при подготовке к игре.
             if user_state.name == 'setting_ship_direction_' + ship:
+
+                if callback.data == 'cancel':
+                    user_state.name = 'cancel_ship_direction_' + ship
+                    break
+
                 user_state.name = 'check_ship_direction_' + ship
                 user_state.messages['direction'] = callback.data
