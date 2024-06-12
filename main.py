@@ -5,6 +5,7 @@ import os
 import telebot.types
 import dotenv
 
+from database.queries import create_tables
 from loader import bot
 from objects.collections import PLAYERS_QUEUE
 from states.states import get_or_add_state
@@ -54,6 +55,9 @@ def main():
         if file_name.endswith('.py') and file_name != '__init__.py':
             mod = importlib.import_module('handlers.' + file_name[:-3])
             mod.load(bot)
+
+    # создаем таблицы, если их еще нет.
+    create_tables()
 
     logger.info('Бот запущен!')
     bot.infinity_polling()

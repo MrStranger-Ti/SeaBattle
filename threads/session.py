@@ -5,6 +5,7 @@ from typing import Optional
 
 import telebot
 
+from database.queries import update_or_add_rating
 from keyboards.inline.game import get_direction_keyboard, get_positions_keyboard
 from objects.collections import ships
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
@@ -31,6 +32,7 @@ class Session(threading.Thread):
         self.bot: telebot.TeleBot = bot
         self.players: list[Player] = [Player(user) for user in players]
         self.leading: Optional[Player] = None
+        self.total_players: int = len(players)
 
     def run(self) -> None:
         # подготовка к игре
@@ -282,6 +284,10 @@ class Session(threading.Thread):
         state.in_game = False
 
         self.check_number_of_players()
+
+    def update_rating(self, player: Player):
+        player_rating = self.total_players - len(self.players)
+        update_or_add_rating(player.object.id, player_rating)
 
     def check_number_of_players(self) -> None:
         """
