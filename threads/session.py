@@ -238,7 +238,7 @@ class Session(threading.Thread):
             if player not in (self.leading, self.leading.opponent):
                 self.bot.send_photo(
                     player.object.id,
-                    self.leading.opponent.draw_player_field(opponent=True),
+                    self.leading.draw_player_field(opponent=True),
                     caption=message_text,
                 )
 
