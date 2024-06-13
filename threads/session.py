@@ -55,9 +55,7 @@ class Session(threading.Thread):
         for player in self.players:
             player_state = get_or_add_state(player.object.id)
             player_state.name = 'setting_ship_position_' + ships[0]
-            self.bot.send_message(player.object.id, 'Установка 3 размерного корабля')
-            self.bot.send_photo(player.object.id, player.draw_player_field())
-            self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
+            self.ask_to_set_the_ship(player, ships[0])
 
         # Пока все не будут готовы к игре, игра не начнется.
         while not self.is_everyone_ready():
@@ -82,7 +80,7 @@ class Session(threading.Thread):
                             self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
                             break
 
-                        elif player_state.name.endswith('1'):
+                        if player_state.name.endswith('1'):
                             try:
                                 player.set_ship(position, ship)
                             except ShipNearbyError:
@@ -97,9 +95,7 @@ class Session(threading.Thread):
                             else:
                                 next_ship = ships[count + 1]
                                 player_state.name = 'setting_ship_position_' + next_ship
-                                self.bot.send_message(player.object.id, f'Установка {next_ship[-1]} размерного корабля')
-                                self.bot.send_photo(player.object.id, player.draw_player_field())
-                                self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
+                                self.ask_to_set_the_ship(player, next_ship)
                         else:
                             player_state.name = 'setting_ship_direction_' + ship
                             self.bot.send_message(player.object.id, 'Выберите направление', reply_markup=get_direction_keyboard())
@@ -123,15 +119,11 @@ class Session(threading.Thread):
 
                         next_ship = ships[count + 1]
                         player_state.name = 'setting_ship_position_' + next_ship
-                        self.bot.send_message(player.object.id, f'Установка {next_ship[-1]} размерного корабля')
-                        self.bot.send_photo(player.object.id, player.draw_player_field())
-                        self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
+                        self.ask_to_set_the_ship(player, next_ship)
 
                     elif player_state.name == 'cancel_ship_direction_' + ship:
                         player_state.name = 'setting_ship_position_' + ship
-                        self.bot.send_message(player.object.id, f'Установка {ship[-1]} размерного корабля')
-                        self.bot.send_photo(player.object.id, player.draw_player_field())
-                        self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
+                        self.ask_to_set_the_ship(player, ship)
 
         # Всем игрокам в сессии выставляем состояние waiting_for_move.
         for player in self.players:
@@ -142,6 +134,17 @@ class Session(threading.Thread):
         # Случайным образом определяем ведущего игрока.
         if self.players:
             self.leading = random.choice(self.players)
+
+    def ask_to_set_the_ship(self, player: Player, ship_name: str) -> None:
+        """
+        Предлагаем игроку выбрать ячейку для установки корабля.
+
+        :param player: игрок
+        :param ship_name: название корабля в списке ships
+        """
+        self.bot.send_message(player.object.id, f'Установка {ship_name[-1]} размерного корабля')
+        self.bot.send_photo(player.object.id, player.draw_player_field())
+        self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
 
     def start_game(self) -> None:
         """
@@ -282,16 +285,26 @@ class Session(threading.Thread):
         back_player = self.players[ind_back_player]
         back_player.opponent = player.opponent
 
+        # Удаляем игрока.
         self.players.remove(player)
 
-        # После удаления выставляем состояние пользователя на main и меняем флаг in_game на False
+        # Обновляем рейтинг игрока.
+        self.update_rating(player)
+
+        # После удаления выставляем состояние пользователя на main и меняем флаг in_game на False.
         state = get_or_add_state(player.object.id)
         state.name = 'main'
         state.in_game = False
 
+        # Проверяем количество оставшихся игроков.
         self.check_number_of_players()
 
-    def update_rating(self, player: Player):
+    def update_rating(self, player: Player) -> None:
+        """
+        Обновление рейтинга игрока.
+
+        :param player: игрок
+        """
         player_rating = self.total_players - len(self.players)
         update_or_add_rating(player.object.id, player_rating)
 
@@ -309,10 +322,12 @@ class Session(threading.Thread):
         Подводим итоги игры.
 
         Единственному оставшемуся игроку в сессии отправляем поздравление,
-        изменяем его состояние и завершаем сессию.
+        обновляем рейтинг, изменяем его состояние и завершаем сессию.
         """
         if self.players:
             winner = self.players[0]
+            self.players.remove(winner)
+            self.update_rating(winner)
             winner_state = get_or_add_state(winner.object.id)
             winner_state.name = 'main'
             winner_state.in_game = False

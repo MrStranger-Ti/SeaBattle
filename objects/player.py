@@ -203,6 +203,8 @@ class Player:
     def get_cell(self, position: str) -> 'Cell':
         """
         Получение ячейки.
+
+        :param position: позиция ячейки
         """
         # Если валидация не прошла, то возбуждаем ошибку PositionError.
         if not self.validate_position(position):
