@@ -143,7 +143,7 @@ class Session(threading.Thread):
         :param ship_name: название корабля в списке ships
         """
         self.bot.send_message(player.object.id, f'Установка {ship_name[-1]} размерного корабля')
-        self.bot.send_photo(player.object.id, player.draw_player_field())
+        self.bot.send_photo(player.object.id, player.draw_player_field(), caption='Ваше поле')
         self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
 
     def start_game(self) -> None:
@@ -152,6 +152,7 @@ class Session(threading.Thread):
         """
         for player in self.players:
             self.bot.send_message(player.object.id, 'Игра начинается.')
+            self.bot.send_message(player.object.id, f'Ваш оппонент: {player.opponent}')
 
         # Выставляем ведущему игроку состояние making_move и просим сделать ход.
         leading_player_state = get_or_add_state(self.leading.object.id)
@@ -201,8 +202,19 @@ class Session(threading.Thread):
             else:
                 self.bot.send_message(self.leading.object.id, 'Вы не попали.')
 
-            self.bot.send_photo(self.leading.object.id, self.leading.draw_player_field(opponent=True), caption='Поле соперника')
-            self.bot.send_photo(self.leading.opponent.object.id, self.leading.opponent.draw_player_field(), caption='Ваше поле')
+            self.bot.send_photo(
+                self.leading.object.id,
+                self.leading.draw_player_field(opponent=True),
+                caption=f'Поле {self.leading.opponent}',
+            )
+            self.bot.send_photo(
+                self.leading.opponent.object.id,
+                self.leading.opponent.draw_player_field(),
+                caption='Ваше поле',
+            )
+
+            # Отправляем поле оппонента ведущего игрока всем игрокам, чтобы они могли наблюдать за игрой, пока ждут свой ход.
+            self.show_all_players_the_field(is_ship)
 
             # Если игрок проиграл, то отправляем соответствующее сообщение и удаляем его из сессии.
             opponent = self.leading.opponent
@@ -213,6 +225,22 @@ class Session(threading.Thread):
             # Изменяем ведущего игрока, если игроков в сессии больше одного и если он не попал.
             if len(self.players) > 1 and not is_ship:
                 self.change_leading()
+
+    def show_all_players_the_field(self, hit: bool) -> None:
+        """
+        Отправка состояния игры всем не участвующим игрокам.
+
+        :param hit: было ли попадание
+        """
+        dynamic_text = 'попал' if hit else 'не попал'
+        message_text = f'Игрок {self.leading} {dynamic_text} в корабль игрока {self.leading.opponent}'
+        for player in self.players:
+            if player not in (self.leading, self.leading.opponent):
+                self.bot.send_photo(
+                    player.object.id,
+                    self.leading.opponent.draw_player_field(opponent=True),
+                    caption=message_text,
+                )
 
     def check_leaving_players(self) -> None:
         """
@@ -240,8 +268,16 @@ class Session(threading.Thread):
         """
         Отправка игроку сообщения о предложении выбрать клетку, а также его поле оппонента.
         """
-        self.bot.send_photo(self.leading.object.id, self.leading.draw_player_field(opponent=True), caption='Поле соперника')
-        self.bot.send_message(self.leading.object.id, 'Выберите клетку.', reply_markup=get_positions_keyboard())
+        self.bot.send_photo(
+            self.leading.object.id,
+            self.leading.draw_player_field(opponent=True),
+            caption=f'Поле {self.leading.opponent}',
+        )
+        self.bot.send_message(
+            self.leading.object.id,
+            'Выберите клетку.',
+            reply_markup=get_positions_keyboard(),
+        )
 
     def change_leading(self) -> None:
         """

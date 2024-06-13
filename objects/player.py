@@ -39,6 +39,9 @@ class Player:
             for name in ships
         }
 
+    def __str__(self):
+        return self.object.username
+
     @staticmethod
     def create_field() -> list[list['Cell']]:
         """
@@ -150,7 +153,7 @@ class Player:
         x_rectangle = 20
         y_rectangle = 25
 
-        # отрисовка ячеек.
+        # Отрисовка ячеек.
         for row_num, row in enumerate(field):
             for col_num, cell in enumerate(row):
                 # cell_size - размер ячейки;
