@@ -1,24 +1,40 @@
 import sqlite3
 
 
-def save_user(user, in_game):
-    with sqlite3.connect('telebot.db') as conn:
+def create_tables() -> None:
+    with sqlite3.connect('database.db') as conn:
         cursor = conn.cursor()
-
         cursor.execute('''
-        CREATE TABLE IF NOT EXISTS `users`(
-        `id` INTEGER NOT NULL PRIMARY KEY,
-        `in_game` BOOLEAN
+        CREATE TABLE IF NOT EXISTS `rating`(
+            `id` INT PRIMARY KEY,
+            `value` INT
         )
         ''')
 
+
+def update_or_add_rating(user_id: int, rating: int) -> None:
+    with sqlite3.connect('database.db') as conn:
+        cursor = conn.cursor()
         cursor.execute('''
-        INSERT INTO `users` (
-            `id`,
-            `in_game`
-        )
-        VALUES (
-            ?,
-            ?
-        )
-        ''', [user.id, in_game])
+        SELECT *
+        FROM `rating`
+        WHERE `id` = ?
+        ''', (user_id,))
+
+        if cursor.fetchone():
+            cursor.execute('''
+            UPDATE `rating` SET
+                `value` = `value` + ?
+            ''', (rating,))
+
+        else:
+            cursor.execute('''
+            INSERT INTO `rating`(
+                `id`,
+                `value`
+            )
+            VALUES (
+                ?,
+                ?
+            )
+            ''', (user_id, rating))
