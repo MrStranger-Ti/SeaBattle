@@ -1,4 +1,9 @@
+import os.path
 from string import ascii_uppercase
+
+# Основные настройки.
+BASE_DIR = os.path.dirname(__file__)
+DATABASE_PATH = os.path.join(BASE_DIR, 'database.db')
 
 # Очередь игроков.
 PLAYERS_QUEUE = []

@@ -7,7 +7,7 @@ import dotenv
 
 from database.queries import create_tables
 from loader import bot
-from objects.collections import PLAYERS_QUEUE
+from settings import PLAYERS_QUEUE
 from states.states import get_or_add_state
 from threads.session import Session
 

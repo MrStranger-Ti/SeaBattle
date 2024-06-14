@@ -1,7 +1,7 @@
 from telebot import TeleBot
 from telebot.types import Message, CallbackQuery
 
-from objects.collections import ships
+from settings import ships
 from objects.player import row_letters, col_numbers
 from states.states import get_or_add_state
 

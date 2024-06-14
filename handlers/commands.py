@@ -1,7 +1,7 @@
 from telebot import TeleBot
 from telebot.types import Message
 from main import check_queue
-from objects.collections import PLAYERS_QUEUE
+from settings import PLAYERS_QUEUE
 from states.states import get_or_add_state
 from keyboards.reply.main_keyboard import keyboard_start, keyboard_play
 

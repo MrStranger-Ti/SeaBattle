@@ -1,8 +1,10 @@
 import sqlite3
 
+from settings import DATABASE_PATH
+
 
 def create_tables() -> None:
-    with sqlite3.connect('database.db') as conn:
+    with sqlite3.connect(DATABASE_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute('''
         CREATE TABLE IF NOT EXISTS `rating`(
@@ -13,7 +15,7 @@ def create_tables() -> None:
 
 
 def update_or_add_rating(user_id: int, rating: int) -> None:
-    with sqlite3.connect('database.db') as conn:
+    with sqlite3.connect(DATABASE_PATH) as conn:
         cursor = conn.cursor()
         cursor.execute('''
         SELECT *
@@ -25,7 +27,8 @@ def update_or_add_rating(user_id: int, rating: int) -> None:
             cursor.execute('''
             UPDATE `rating` SET
                 `value` = `value` + ?
-            ''', (rating,))
+            WHERE `id` == ?
+            ''', (rating, user_id))
 
         else:
             cursor.execute('''

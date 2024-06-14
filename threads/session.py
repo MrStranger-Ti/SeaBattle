@@ -8,7 +8,7 @@ from telebot import types
 
 from database.queries import update_or_add_rating
 from keyboards.inline.game import get_direction_keyboard, get_positions_keyboard
-from objects.collections import ships
+from settings import ships
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 from objects.player import Player
 from states.states import get_or_add_state
