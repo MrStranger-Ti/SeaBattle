@@ -4,6 +4,7 @@ import time
 from typing import Optional
 
 import telebot
+from telebot import types
 
 from database.queries import update_or_add_rating
 from keyboards.inline.game import get_direction_keyboard, get_positions_keyboard
@@ -219,7 +220,11 @@ class Session(threading.Thread):
             # Если игрок проиграл, то отправляем соответствующее сообщение и удаляем его из сессии.
             opponent = self.leading.opponent
             if opponent.lost:
-                self.bot.send_message(opponent.object.id, 'Вы проиграли.')
+                markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+                btn1 = types.KeyboardButton("Подбор игроков")
+                btn2 = types.KeyboardButton("Информация")
+                markup.add(btn1, btn2)
+                self.bot.send_message(opponent.object.id, 'Вы проиграли.',reply_markup=markup)
                 self.remove_player(opponent)
 
             # Изменяем ведущего игрока, если игроков в сессии больше одного и если он не попал.
@@ -246,13 +251,18 @@ class Session(threading.Thread):
         """
         Проверка игроков, которые хотят выйти из игры.
         """
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton("Подбор игроков")
+        btn2 = types.KeyboardButton("Информация")
+        markup.add(btn1, btn2)
+
         for player in self.players:
             player_state = get_or_add_state(player.object.id)
 
             # Если игрок хочет покинуть игру, то удаляем его из сессии.
             if player_state.name == 'leaving_game':
                 self.remove_player(player)
-                self.bot.send_message(player.object.id, 'Вы покинули игру.')
+                self.bot.send_message(player.object.id, 'Вы покинули игру.',reply_markup=markup)
 
     def is_everyone_ready(self) -> bool:
         """
@@ -360,6 +370,11 @@ class Session(threading.Thread):
         Единственному оставшемуся игроку в сессии отправляем поздравление,
         обновляем рейтинг, изменяем его состояние и завершаем сессию.
         """
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        btn1 = types.KeyboardButton("Подбор игроков")
+        btn2 = types.KeyboardButton("Информация")
+        markup.add(btn1, btn2)
+
         if self.players:
             winner = self.players[0]
             self.players.remove(winner)
@@ -367,7 +382,7 @@ class Session(threading.Thread):
             winner_state = get_or_add_state(winner.object.id)
             winner_state.name = 'main'
             winner_state.in_game = False
-            self.bot.send_message(winner.object.id, 'Поздравляем, вы выиграли!')
+            self.bot.send_message(winner.object.id, 'Поздравляем, вы выиграли!', reply_markup=markup)
 
         self.stop_session()
 
