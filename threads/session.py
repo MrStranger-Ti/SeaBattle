@@ -203,15 +203,19 @@ class Session(threading.Thread):
             else:
                 self.bot.send_message(self.leading.object.id, 'Вы не попали.')
 
+            # Отправляем ведущему игроку поле противника.
             self.bot.send_photo(
                 self.leading.object.id,
                 self.leading.draw_player_field(opponent=True),
                 caption=f'Поле {self.leading.opponent}',
             )
+
+            # Отправляем противнику ведущего игрока свое поле.
+            format_string = 'попал' if is_ship else 'не попал'
             self.bot.send_photo(
                 self.leading.opponent.object.id,
                 self.leading.opponent.draw_player_field(),
-                caption='Ваше поле',
+                caption=f'В вас {format_string} {self.leading}',
             )
 
             # Отправляем поле оппонента ведущего игрока всем игрокам, чтобы они могли наблюдать за игрой, пока ждут свой ход.
@@ -223,9 +227,13 @@ class Session(threading.Thread):
                 self.bot.send_message(opponent.object.id, 'Вы проиграли.',reply_markup=keyboard_start())
                 self.remove_player(opponent)
 
-            # Изменяем ведущего игрока, если игроков в сессии больше одного и если он не попал.
+            # Изменяем ведущего игрока, если игроков в сессии больше одного и если он не попал,
+            # иначе просим ведущего игрока сделать еще один ход.
             if len(self.players) > 1 and not is_ship:
                 self.change_leading()
+            else:
+                leading_player_state.name = 'making_move'
+                self.ask_to_make_a_move()
 
     def show_all_players_the_field(self, hit: bool) -> None:
         """
@@ -268,17 +276,26 @@ class Session(threading.Thread):
 
     def ask_to_make_a_move(self) -> None:
         """
-        Отправка игроку сообщения о предложении выбрать клетку, а также его поле оппонента.
+        Отправка игроку сообщения о предложении выбрать клетку, а также отправка поля оппонента.
         """
+        # Отправка поля оппонента.
         self.bot.send_photo(
             self.leading.object.id,
             self.leading.draw_player_field(opponent=True),
             caption=f'Поле {self.leading.opponent}',
         )
+
+        # Отправка клавиатуры для выбора ячейки.
         self.bot.send_message(
             self.leading.object.id,
             'Выберите клетку.',
             reply_markup=get_positions_keyboard(),
+        )
+
+        # Отправка оппоненту о том, что его атакуют.
+        self.bot.send_message(
+            self.leading.opponent.object.id,
+            f'Вас атакует {self.leading}',
         )
 
     def change_leading(self) -> None:
@@ -312,19 +329,24 @@ class Session(threading.Thread):
         ind = self.players.index(player)
         return self.players[ind + 1]
 
-    def remove_player(self, player: Player) -> None:
+    def remove_player(self, removing_player: Player) -> None:
         """
         Удаление игрока из сессии.
 
-        :param player: игрок, которого нужно удалить
+        :param removing_player: игрок, которого нужно удалить
         """
         # Перед удалением меняем оппонента у позади стоящего игрока.
-        ind_back_player = self.players.index(player) - 1
+        ind_back_player = self.players.index(removing_player) - 1
         back_player = self.players[ind_back_player]
-        back_player.opponent = player.opponent
+        back_player.opponent = removing_player.opponent
 
         # Удаляем игрока.
-        self.players.remove(player)
+        self.players.remove(removing_player)
+
+        # Отправляем всем игрокам сообщение о том, что игрок проиграл или вышел из игры.
+        for player in self.players:
+            format_string = 'проиграл' if removing_player.lost else 'покинул игру'
+            self.bot.send_message(player.object.id, f'Игрок {removing_player} {format_string}')
 
         # Обновляем рейтинг игрока.
         self.update_rating(player)

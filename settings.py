@@ -19,8 +19,8 @@ ships: list[str] = [
     'third_1',
 ]
 
-# Строки поля
+# Строки поля.
 row_letters = ascii_uppercase[:8]
 
-# Колонки поля
+# Колонки поля.
 col_numbers = [str(num) for num in range(1, 9)]
