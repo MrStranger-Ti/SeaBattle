@@ -79,6 +79,7 @@ class Session(threading.Thread):
                         if not player.valid_cell(cell):
                             player_state.name = 'setting_ship_position_' + ship
                             self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
+                            self.ask_to_set_the_ship(player, ship)
                             break
 
                         if player_state.name.endswith('1'):
@@ -99,7 +100,7 @@ class Session(threading.Thread):
                                 self.ask_to_set_the_ship(player, next_ship)
                         else:
                             player_state.name = 'setting_ship_direction_' + ship
-                            self.bot.send_message(player.object.id, 'Выберите направление', reply_markup=get_direction_keyboard())
+                            self.ask_to_choose_a_direction(player, position)
 
                     elif player_state.name == 'check_ship_direction_' + ship:
                         try:
@@ -115,7 +116,7 @@ class Session(threading.Thread):
                                 self.bot.send_message(player.object.id, 'Передано неверное направление.')
 
                             player_state.name = 'setting_ship_direction_' + ship
-                            self.bot.send_message(player.object.id, 'Выберите направление', reply_markup=get_direction_keyboard())
+                            self.ask_to_choose_a_direction(player, position)
                             break
 
                         next_ship = ships[count + 1]
@@ -143,9 +144,28 @@ class Session(threading.Thread):
         :param player: игрок
         :param ship_name: название корабля в списке ships
         """
-        self.bot.send_message(player.object.id, f'Установка {ship_name[-1]} размерного корабля')
-        self.bot.send_photo(player.object.id, player.draw_player_field(), caption='Ваше поле')
-        self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
+        self.bot.send_photo(
+            player.object.id,
+            player.draw_player_field(),
+        )
+        self.bot.send_message(
+            player.object.id,
+            f'Установка {ship_name[-1]} размерного корабля',
+            reply_markup=get_positions_keyboard(player),
+        )
+
+    def ask_to_choose_a_direction(self, player: Player, position: str) -> None:
+        """
+        Просим игрока выбрать направление.
+
+        :param player: игрок
+        :param position: позиция
+        """
+        self.bot.send_message(
+            player.object.id,
+            f'Выберите направление для {position}',
+            reply_markup=get_direction_keyboard(),
+        )
 
     def start_game(self) -> None:
         """
@@ -159,6 +179,9 @@ class Session(threading.Thread):
         leading_player_state = get_or_add_state(self.leading.object.id)
         leading_player_state.name = 'making_move'
         self.ask_to_make_a_move()
+
+        # Предупреждаем игрока об атаке.
+        self.warn_player_about_an_attack()
 
     def update(self) -> None:
         """
@@ -197,25 +220,20 @@ class Session(threading.Thread):
                 self.ask_to_make_a_move()
                 return
 
-            # Отправляем пользователю сообщение, попал он или нет.
-            if is_ship:
-                self.bot.send_message(self.leading.object.id, 'Вы попали.')
-            else:
-                self.bot.send_message(self.leading.object.id, 'Вы не попали.')
-
             # Отправляем ведущему игроку поле противника.
+            format_lead_message = 'Вы попали' if is_ship else 'Вы не попали.'
             self.bot.send_photo(
                 self.leading.object.id,
                 self.leading.draw_player_field(opponent=True),
-                caption=f'Поле {self.leading.opponent}',
+                caption=f'{format_lead_message} {self.leading.opponent}',
             )
 
             # Отправляем противнику ведущего игрока свое поле.
-            format_string = 'попал' if is_ship else 'не попал'
+            format_opponent_message = 'попал' if is_ship else 'не попал'
             self.bot.send_photo(
                 self.leading.opponent.object.id,
                 self.leading.opponent.draw_player_field(),
-                caption=f'В вас {format_string} {self.leading}',
+                caption=f'В вас {format_opponent_message} {self.leading}',
             )
 
             # Отправляем поле оппонента ведущего игрока всем игрокам, чтобы они могли наблюдать за игрой, пока ждут свой ход.
@@ -278,7 +296,7 @@ class Session(threading.Thread):
         """
         Отправка игроку сообщения о предложении выбрать клетку, а также отправка поля оппонента.
         """
-        # Отправка поля оппонента.
+        # Отправка поля оппонента и клавиатуры для выбора ячейки.
         self.bot.send_photo(
             self.leading.object.id,
             self.leading.draw_player_field(opponent=True),
@@ -288,14 +306,8 @@ class Session(threading.Thread):
         # Отправка клавиатуры для выбора ячейки.
         self.bot.send_message(
             self.leading.object.id,
-            'Выберите клетку.',
-            reply_markup=get_positions_keyboard(),
-        )
-
-        # Отправка оппоненту о том, что его атакуют.
-        self.bot.send_message(
-            self.leading.opponent.object.id,
-            f'Вас атакует {self.leading}',
+            f'Вы атакуете {self.leading.opponent}',
+            reply_markup=get_positions_keyboard(self.leading, opponent=True),
         )
 
     def change_leading(self) -> None:
@@ -315,6 +327,17 @@ class Session(threading.Thread):
         new_leading_player_state = get_or_add_state(self.leading.object.id)
         new_leading_player_state.name = 'making_move'
         self.ask_to_make_a_move()
+        self.warn_player_about_an_attack()
+
+    def warn_player_about_an_attack(self):
+        """
+        Отправка оппоненту ведущего игрока о том, что его атакуют.
+        :return:
+        """
+        self.bot.send_message(
+            self.leading.opponent.object.id,
+            f'Вас атакует {self.leading}',
+        )
 
     def get_opponent(self, player: Player) -> Player:
         """
