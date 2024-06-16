@@ -393,7 +393,7 @@ class Session(threading.Thread):
         :param player: игрок
         """
         player_rating = self.total_players - len(self.players)
-        update_or_add_rating(player.object.id, player_rating)
+        update_or_add_rating(player.object, player_rating)
 
     def check_number_of_players(self) -> None:
         """
