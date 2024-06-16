@@ -29,22 +29,6 @@ def get_positions_keyboard(player: Player, opponent: bool = False) -> InlineKeyb
 
         keyboard.row(*row_buttons)
 
-    # keyboard = InlineKeyboardMarkup()
-    # choices = []
-    # for row in row_letters:
-    #     for col in col_numbers:
-    #         choices.append(row + col)
-    #
-    # buttons = []
-    # for position in choices:
-    #     button = InlineKeyboardButton(text=position, callback_data=position)
-    #     buttons.append(button)
-    #
-    # size = len(row_letters)
-    # for _ in range(size):
-    #     keyboard.row(*buttons[:size])
-    #     del buttons[:size]
-
     return keyboard
 
 
