@@ -12,11 +12,11 @@ PLAYERS_QUEUE = []
 ships: list[str] = [
     'first_3',
     'second_3',
+    'third_3',
     'first_2',
     'second_2',
+    'third_2',
     'first_1',
-    'second_1',
-    'third_1',
 ]
 
 # Строки поля.

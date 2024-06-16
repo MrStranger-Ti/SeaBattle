@@ -221,11 +221,11 @@ class Session(threading.Thread):
                 return
 
             # Отправляем ведущему игроку поле противника.
-            format_lead_message = 'Вы попали' if is_ship else 'Вы не попали.'
+            format_lead_message = 'Вы попали' if is_ship else 'Вы не попали'
             self.bot.send_photo(
                 self.leading.object.id,
                 self.leading.draw_player_field(opponent=True),
-                caption=f'{format_lead_message} {self.leading.opponent}',
+                caption=f'{format_lead_message} в корабль игрока {self.leading.opponent}',
             )
 
             # Отправляем противнику ведущего игрока свое поле.
@@ -233,7 +233,7 @@ class Session(threading.Thread):
             self.bot.send_photo(
                 self.leading.opponent.object.id,
                 self.leading.opponent.draw_player_field(),
-                caption=f'В вас {format_opponent_message} {self.leading}',
+                caption=f'В ваш корабль {format_opponent_message} игрок {self.leading}',
             )
 
             # Отправляем поле оппонента ведущего игрока всем игрокам, чтобы они могли наблюдать за игрой, пока ждут свой ход.
@@ -249,9 +249,10 @@ class Session(threading.Thread):
             # иначе просим ведущего игрока сделать еще один ход.
             if len(self.players) > 1 and not is_ship:
                 self.change_leading()
-            else:
+
+            elif len(self.players) > 1:
                 leading_player_state.name = 'making_move'
-                self.ask_to_make_a_move()
+                self.ask_to_make_a_move(send_field=False)
 
     def show_all_players_the_field(self, hit: bool) -> None:
         """
@@ -292,21 +293,24 @@ class Session(threading.Thread):
         """
         return all(player.ready for player in self.players)
 
-    def ask_to_make_a_move(self) -> None:
+    def ask_to_make_a_move(self, send_field: bool = True) -> None:
         """
         Отправка игроку сообщения о предложении выбрать клетку, а также отправка поля оппонента.
+
+        :param send_field: отправлять ли ведущему игроку поле соперника
         """
-        # Отправка поля оппонента и клавиатуры для выбора ячейки.
-        self.bot.send_photo(
-            self.leading.object.id,
-            self.leading.draw_player_field(opponent=True),
-            caption=f'Поле {self.leading.opponent}',
-        )
+        if send_field:
+            # Отправка поля оппонента и клавиатуры для выбора ячейки.
+            self.bot.send_photo(
+                self.leading.object.id,
+                self.leading.draw_player_field(opponent=True),
+                caption=f'Поле {self.leading.opponent}',
+            )
 
         # Отправка клавиатуры для выбора ячейки.
         self.bot.send_message(
             self.leading.object.id,
-            f'Вы атакуете {self.leading.opponent}',
+            f'Вы атакуете игрока {self.leading.opponent}',
             reply_markup=get_positions_keyboard(self.leading, opponent=True),
         )
 

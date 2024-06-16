@@ -11,8 +11,13 @@ def get_positions_keyboard(player: Player, opponent: bool = False) -> InlineKeyb
     :param opponent: отображать ли поле кнопок как вражеское
     :return: клавиатура
     """
+    if opponent:
+        field = player.opponent.field
+    else:
+        field = player.field
+
     keyboard = InlineKeyboardMarkup()
-    for row in player.field:
+    for row in field:
         row_buttons = []
         for cell in row:
             if (opponent and cell.is_ship and cell.opened) or (not opponent and cell.is_ship):
