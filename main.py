@@ -7,12 +7,11 @@ import dotenv
 
 from database.queries import create_tables
 from loader import bot
-from objects.collections import PLAYERS_QUEUE
+from settings import PLAYERS_QUEUE
 from states.states import get_or_add_state
 from threads.session import Session
 
 dotenv.load_dotenv()
-
 
 logging.basicConfig(level='INFO')
 logger = logging.getLogger(__name__)
@@ -51,10 +50,8 @@ def create_session(players: list[telebot.types.User]):
 
 def main():
     # подгружаем все файлы с обработчиками.
-    for file_name in os.listdir('./handlers/'):
-        if file_name.endswith('.py') and file_name != '__init__.py':
-            mod = importlib.import_module('handlers.' + file_name[:-3])
-            mod.load(bot)
+    from handlers import load
+    load(bot)
 
     # создаем таблицы, если их еще нет.
     create_tables()

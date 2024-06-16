@@ -7,7 +7,7 @@ import PIL
 from PIL import ImageDraw, Image, ImageFont
 from telebot.types import User
 
-from objects.collections import ships, row_letters, col_numbers
+from settings import ships, row_letters, col_numbers
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 
 
@@ -40,7 +40,7 @@ class Player:
         }
 
     def __str__(self):
-        return self.object.username
+        return self.object.username or self.object.first_name
 
     @staticmethod
     def create_field() -> list[list['Cell']]:
@@ -298,6 +298,7 @@ class Player:
         Возвращается True, если удалось открыть ячейку игрока, False в противном случае.
 
         :param position: позиция ячейки, которую необходимо открыть
+        :return стоял ли корабль на ячейке
         """
         cell = self.get_cell(position)
 

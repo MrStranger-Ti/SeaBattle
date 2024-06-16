@@ -8,7 +8,7 @@ from telebot import types
 
 from database.queries import update_or_add_rating
 from keyboards.inline.game import get_direction_keyboard, get_positions_keyboard
-from objects.collections import ships
+from settings import ships
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 from objects.player import Player
 from states.states import get_or_add_state
@@ -79,6 +79,7 @@ class Session(threading.Thread):
                         if not player.valid_cell(cell):
                             player_state.name = 'setting_ship_position_' + ship
                             self.bot.send_message(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
+                            self.ask_to_set_the_ship(player, ship)
                             break
 
                         if player_state.name.endswith('1'):
@@ -99,7 +100,7 @@ class Session(threading.Thread):
                                 self.ask_to_set_the_ship(player, next_ship)
                         else:
                             player_state.name = 'setting_ship_direction_' + ship
-                            self.bot.send_message(player.object.id, 'Выберите направление', reply_markup=get_direction_keyboard())
+                            self.ask_to_choose_a_direction(player, position)
 
                     elif player_state.name == 'check_ship_direction_' + ship:
                         try:
@@ -115,7 +116,7 @@ class Session(threading.Thread):
                                 self.bot.send_message(player.object.id, 'Передано неверное направление.')
 
                             player_state.name = 'setting_ship_direction_' + ship
-                            self.bot.send_message(player.object.id, 'Выберите направление', reply_markup=get_direction_keyboard())
+                            self.ask_to_choose_a_direction(player, position)
                             break
 
                         next_ship = ships[count + 1]
@@ -143,9 +144,28 @@ class Session(threading.Thread):
         :param player: игрок
         :param ship_name: название корабля в списке ships
         """
-        self.bot.send_message(player.object.id, f'Установка {ship_name[-1]} размерного корабля')
-        self.bot.send_photo(player.object.id, player.draw_player_field(), caption='Ваше поле')
-        self.bot.send_message(player.object.id, 'Выберите клетку', reply_markup=get_positions_keyboard())
+        self.bot.send_photo(
+            player.object.id,
+            player.draw_player_field(),
+        )
+        self.bot.send_message(
+            player.object.id,
+            f'Установка {ship_name[-1]} размерного корабля',
+            reply_markup=get_positions_keyboard(player),
+        )
+
+    def ask_to_choose_a_direction(self, player: Player, position: str) -> None:
+        """
+        Просим игрока выбрать направление.
+
+        :param player: игрок
+        :param position: позиция
+        """
+        self.bot.send_message(
+            player.object.id,
+            f'Выберите направление для {position}',
+            reply_markup=get_direction_keyboard(),
+        )
 
     def start_game(self) -> None:
         """
@@ -159,6 +179,9 @@ class Session(threading.Thread):
         leading_player_state = get_or_add_state(self.leading.object.id)
         leading_player_state.name = 'making_move'
         self.ask_to_make_a_move()
+
+        # Предупреждаем игрока об атаке.
+        self.warn_player_about_an_attack()
 
     def update(self) -> None:
         """
@@ -197,21 +220,20 @@ class Session(threading.Thread):
                 self.ask_to_make_a_move()
                 return
 
-            # Отправляем пользователю сообщение, попал он или нет.
-            if is_ship:
-                self.bot.send_message(self.leading.object.id, 'Вы попали.')
-            else:
-                self.bot.send_message(self.leading.object.id, 'Вы не попали.')
-
+            # Отправляем ведущему игроку поле противника.
+            format_lead_message = 'Вы попали' if is_ship else 'Вы не попали'
             self.bot.send_photo(
                 self.leading.object.id,
                 self.leading.draw_player_field(opponent=True),
-                caption=f'Поле {self.leading.opponent}',
+                caption=f'{format_lead_message} в корабль игрока {self.leading.opponent}',
             )
+
+            # Отправляем противнику ведущего игрока свое поле.
+            format_opponent_message = 'попал' if is_ship else 'не попал'
             self.bot.send_photo(
                 self.leading.opponent.object.id,
                 self.leading.opponent.draw_player_field(),
-                caption='Ваше поле',
+                caption=f'В ваш корабль {format_opponent_message} игрок {self.leading}',
             )
 
             # Отправляем поле оппонента ведущего игрока всем игрокам, чтобы они могли наблюдать за игрой, пока ждут свой ход.
@@ -223,9 +245,14 @@ class Session(threading.Thread):
                 self.bot.send_message(opponent.object.id, 'Вы проиграли.',reply_markup=keyboard_start())
                 self.remove_player(opponent)
 
-            # Изменяем ведущего игрока, если игроков в сессии больше одного и если он не попал.
+            # Изменяем ведущего игрока, если игроков в сессии больше одного и если он не попал,
+            # иначе просим ведущего игрока сделать еще один ход.
             if len(self.players) > 1 and not is_ship:
                 self.change_leading()
+
+            elif len(self.players) > 1:
+                leading_player_state.name = 'making_move'
+                self.ask_to_make_a_move(send_field=False)
 
     def show_all_players_the_field(self, hit: bool) -> None:
         """
@@ -266,19 +293,25 @@ class Session(threading.Thread):
         """
         return all(player.ready for player in self.players)
 
-    def ask_to_make_a_move(self) -> None:
+    def ask_to_make_a_move(self, send_field: bool = True) -> None:
         """
-        Отправка игроку сообщения о предложении выбрать клетку, а также его поле оппонента.
+        Отправка игроку сообщения о предложении выбрать клетку, а также отправка поля оппонента.
+
+        :param send_field: отправлять ли ведущему игроку поле соперника
         """
-        self.bot.send_photo(
-            self.leading.object.id,
-            self.leading.draw_player_field(opponent=True),
-            caption=f'Поле {self.leading.opponent}',
-        )
+        if send_field:
+            # Отправка поля оппонента и клавиатуры для выбора ячейки.
+            self.bot.send_photo(
+                self.leading.object.id,
+                self.leading.draw_player_field(opponent=True),
+                caption=f'Поле {self.leading.opponent}',
+            )
+
+        # Отправка клавиатуры для выбора ячейки.
         self.bot.send_message(
             self.leading.object.id,
-            'Выберите клетку.',
-            reply_markup=get_positions_keyboard(),
+            f'Вы атакуете игрока {self.leading.opponent}',
+            reply_markup=get_positions_keyboard(self.leading, opponent=True),
         )
 
     def change_leading(self) -> None:
@@ -298,6 +331,17 @@ class Session(threading.Thread):
         new_leading_player_state = get_or_add_state(self.leading.object.id)
         new_leading_player_state.name = 'making_move'
         self.ask_to_make_a_move()
+        self.warn_player_about_an_attack()
+
+    def warn_player_about_an_attack(self):
+        """
+        Отправка оппоненту ведущего игрока о том, что его атакуют.
+        :return:
+        """
+        self.bot.send_message(
+            self.leading.opponent.object.id,
+            f'Вас атакует {self.leading}',
+        )
 
     def get_opponent(self, player: Player) -> Player:
         """
@@ -312,19 +356,24 @@ class Session(threading.Thread):
         ind = self.players.index(player)
         return self.players[ind + 1]
 
-    def remove_player(self, player: Player) -> None:
+    def remove_player(self, removing_player: Player) -> None:
         """
         Удаление игрока из сессии.
 
-        :param player: игрок, которого нужно удалить
+        :param removing_player: игрок, которого нужно удалить
         """
         # Перед удалением меняем оппонента у позади стоящего игрока.
-        ind_back_player = self.players.index(player) - 1
+        ind_back_player = self.players.index(removing_player) - 1
         back_player = self.players[ind_back_player]
-        back_player.opponent = player.opponent
+        back_player.opponent = removing_player.opponent
 
         # Удаляем игрока.
-        self.players.remove(player)
+        self.players.remove(removing_player)
+
+        # Отправляем всем игрокам сообщение о том, что игрок проиграл или вышел из игры.
+        for player in self.players:
+            format_string = 'проиграл' if removing_player.lost else 'покинул игру'
+            self.bot.send_message(player.object.id, f'Игрок {removing_player} {format_string}')
 
         # Обновляем рейтинг игрока.
         self.update_rating(player)
@@ -344,7 +393,7 @@ class Session(threading.Thread):
         :param player: игрок
         """
         player_rating = self.total_players - len(self.players)
-        update_or_add_rating(player.object.id, player_rating)
+        update_or_add_rating(player.object, player_rating)
 
     def check_number_of_players(self) -> None:
         """
