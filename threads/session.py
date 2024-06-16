@@ -376,10 +376,10 @@ class Session(threading.Thread):
             self.bot.send_message(player.object.id, f'Игрок {removing_player} {format_string}')
 
         # Обновляем рейтинг игрока.
-        self.update_rating(player)
+        self.update_rating(removing_player)
 
         # После удаления выставляем состояние пользователя на main и меняем флаг in_game на False.
-        state = get_or_add_state(player.object.id)
+        state = get_or_add_state(removing_player.object.id)
         state.name = 'main'
         state.in_game = False
 
