@@ -1,3 +1,5 @@
+from typing import Optional
+
 from telebot.types import Message
 
 STATES: dict[int: 'State'] = {}
@@ -12,15 +14,21 @@ class State:
     Attributes:
         name (str): название
         in_game (bool): в игре ли пользователь
-        message (Message): объект сообщения из библиотеки telebot
+        messages (dict[str: str]): объект сообщения из библиотеки telebot
     """
-    def __init__(self, name: str, in_game: bool = False, message: Message | None = None):
+
+    def __init__(self, name: str, in_game: bool = False):
         self.name: str = name
         self.in_game: bool = in_game
         self.messages: dict[str: str] = {}
 
 
-def get_or_add_state(user_id: int, name: str | None = None, in_game: bool = False, message: Message | None = None) -> State:
+def get_or_add_state(
+        user_id: int,
+        name: Optional[str] = None,
+        in_game: bool = False,
+        message: Optional[Message] = None
+) -> State:
     """
     Получение или добавление состояния.
 

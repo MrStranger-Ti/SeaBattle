@@ -1,6 +1,7 @@
 from telebot import TeleBot
 from telebot.types import Message, CallbackQuery
 
+from helpers.deleting_messages import deleting_user_messages
 from database.queries import get_users
 from helpers.validators import validate_positions_callback
 from main import check_queue
@@ -14,6 +15,7 @@ def load(bot: TeleBot):
     # | Обработчики команд |
     # |--------------------|
     @bot.message_handler(commands=['info'])
+    @deleting_user_messages(bot)
     def info(message: Message):
         """
         Обработчик команды /info.
@@ -25,7 +27,7 @@ def load(bot: TeleBot):
         if message.from_user.id not in players_queue_ids and not user_state.in_game:
             with open('message_text/information.txt', 'r', encoding='utf-8') as f:  # открываем документ
                 contents = f.read()
-                bot.send_message(message.chat.id,contents)
+                bot.send_message(message.chat.id, contents, reply_markup=keyboard_start())
 
     @bot.message_handler(commands=['rating'])
     def rating_table(message: Message):
@@ -50,6 +52,7 @@ def load(bot: TeleBot):
             bot.send_message(message.chat.id, text=f"🏵Таблица лидеров🏵\n\n{users_rating}",
                              reply_markup=keyboard_start(), parse_mode="HTML")
     @bot.message_handler(commands=['start'])
+    @deleting_user_messages(bot)
     def start(message: Message):
         """
         Обработчик команды /start.
@@ -60,9 +63,10 @@ def load(bot: TeleBot):
         user_state = get_or_add_state(message.from_user.id)
 
         if message.from_user.id not in players_queue_ids and not user_state.in_game:
-           bot.send_message(message.chat.id, text="Привет, {0.first_name}!".format(message.from_user), reply_markup=keyboard_start())
+            bot.send_message(message.chat.id, text="Привет, {0.first_name}!".format(message.from_user), reply_markup=keyboard_start())
 
     @bot.message_handler(commands=['play'])
+    @deleting_user_messages(bot)
     def add_player_to_queue(message: Message):
         """
         Обработчик команды /play.
@@ -92,6 +96,7 @@ def load(bot: TeleBot):
             bot.send_message(message.from_user.id, 'Вы уже в игре.')
 
     @bot.message_handler(commands=['leave'])
+    @deleting_user_messages(bot)
     def leave(message: Message):
         """
         Обработчик команды /leave.
@@ -159,31 +164,21 @@ def load(bot: TeleBot):
     # | Обработчик текста |
     # |-------------------|
     @bot.message_handler(content_types=['text'])
+    @deleting_user_messages(bot)
     def game_process(message: Message):
         """
         Обработчик обычного сообщения.
 
         :param message: сообщение
         """
-        # Достаем состояние пользователя.
-        user_state = get_or_add_state(message.from_user.id)
-
-        # Если состояние waiting_for_move, то удаляем его сообщения, чтобы не засорять чат.
-        if user_state.name == 'waiting_for_move':
-            bot.delete_message(message.chat.id, message.id)
-
-        elif message.text == "👥Подбор игроков👥":
+        if message.text == "👥Подбор игроков👥":
             add_player_to_queue(message)
-            bot.delete_message(message_id=message.id, chat_id=message.from_user.id)
 
         elif message.text == "Покинуть очередь или игру":
             leave(message)
-            bot.delete_message(message_id=message.id, chat_id=message.from_user.id)
 
         elif message.text == "📕Информация📕":
             info(message)
-            bot.delete_message(message_id=message.id, chat_id=message.from_user.id)
 
         elif message.text == "🏆Рейтинг🏆":
             rating_table(message)
-            bot.delete_message(message_id=message.id, chat_id=message.from_user.id)
