@@ -4,15 +4,14 @@ import time
 from typing import Optional
 
 import telebot
-from telebot import types
 
 from database.queries import update_or_add_rating
 from keyboards.inline.game import get_direction_keyboard, get_positions_keyboard
-from settings import ships
+from settings import SHIPS, STATES
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 from objects.player import Player
-from states.states import get_or_add_state
 from keyboards.reply.main_keyboard import keyboard_start
+
 
 class Session(threading.Thread):
     """
@@ -54,9 +53,9 @@ class Session(threading.Thread):
         """
         # Просим всех игроков установить первый корабль.
         for player in self.players:
-            player_state = get_or_add_state(player.object.id)
-            player_state.name = 'setting_ship_position_' + ships[0]
-            self.ask_to_set_the_ship(player, ships[0])
+            player_state = STATES.get(player.object.id)
+            player_state.name = 'setting_ship_position_' + SHIPS[0]
+            self.ask_to_set_the_ship(player, SHIPS[0])
 
         # Пока все не будут готовы к игре, игра не начнется.
         while not self.is_everyone_ready():
@@ -64,10 +63,10 @@ class Session(threading.Thread):
 
             self.check_leaving_players()
             for player in self.players:
-                player_state = get_or_add_state(player.object.id)
+                player_state = STATES.get(player.object.id)
                 position = player_state.messages.get('position')
                 direction = player_state.messages.get('direction')
-                for count, ship in enumerate(ships):
+                for count, ship in enumerate(SHIPS):
                     if player_state.name == 'check_ship_position_' + ship:
                         try:
                             cell = player.get_cell(position)
@@ -95,7 +94,7 @@ class Session(threading.Thread):
                                 self.bot.send_message(player.object.id, 'Вы готовы к игре. Дождитесь всех игроков.')
                                 self.bot.send_photo(player.object.id, player.draw_player_field())
                             else:
-                                next_ship = ships[count + 1]
+                                next_ship = SHIPS[count + 1]
                                 player_state.name = 'setting_ship_position_' + next_ship
                                 self.ask_to_set_the_ship(player, next_ship)
                         else:
@@ -119,7 +118,7 @@ class Session(threading.Thread):
                             self.ask_to_choose_a_direction(player, position)
                             break
 
-                        next_ship = ships[count + 1]
+                        next_ship = SHIPS[count + 1]
                         player_state.name = 'setting_ship_position_' + next_ship
                         self.ask_to_set_the_ship(player, next_ship)
 
@@ -130,7 +129,7 @@ class Session(threading.Thread):
         # Всем игрокам в сессии выставляем состояние waiting_for_move.
         for player in self.players:
             player.opponent = self.get_opponent(player)
-            player_state = get_or_add_state(player.object.id)
+            player_state = STATES.get(player.object.id)
             player_state.name = 'waiting_for_move'
 
         # Случайным образом определяем ведущего игрока.
@@ -176,7 +175,7 @@ class Session(threading.Thread):
             self.bot.send_message(player.object.id, f'Ваш оппонент: {player.opponent}')
 
         # Выставляем ведущему игроку состояние making_move и просим сделать ход.
-        leading_player_state = get_or_add_state(self.leading.object.id)
+        leading_player_state = STATES.get(self.leading.object.id)
         leading_player_state.name = 'making_move'
         self.ask_to_make_a_move()
 
@@ -193,7 +192,7 @@ class Session(threading.Thread):
         self.check_leaving_players()
 
         # Получаем состояние ведущего игрока
-        leading_player_state = get_or_add_state(self.leading.object.id)
+        leading_player_state = STATES.get(self.leading.object.id)
 
         # Если у ведущего игрока состояние check_move, то пробуем раскрыть клетку у соперника.
         if leading_player_state.name == 'check_move':
@@ -242,7 +241,7 @@ class Session(threading.Thread):
             # Если игрок проиграл, то отправляем соответствующее сообщение и удаляем его из сессии.
             opponent = self.leading.opponent
             if opponent.lost:
-                self.bot.send_message(opponent.object.id, 'Вы проиграли.',reply_markup=keyboard_start())
+                self.bot.send_message(opponent.object.id, 'Вы проиграли.', reply_markup=keyboard_start())
                 self.remove_player(opponent)
 
             # Изменяем ведущего игрока, если игроков в сессии больше одного и если он не попал,
@@ -276,12 +275,12 @@ class Session(threading.Thread):
         """
 
         for player in self.players:
-            player_state = get_or_add_state(player.object.id)
+            player_state = STATES.get(player.object.id)
 
             # Если игрок хочет покинуть игру, то удаляем его из сессии.
             if player_state.name == 'leaving_game':
                 self.remove_player(player)
-                self.bot.send_message(player.object.id, 'Вы покинули игру.',reply_markup=keyboard_start())
+                self.bot.send_message(player.object.id, 'Вы покинули игру.', reply_markup=keyboard_start())
 
     def is_everyone_ready(self) -> bool:
         """
@@ -321,14 +320,14 @@ class Session(threading.Thread):
         Следующим ведущим игроком должен стать соперник текущего ведущего игрока.
         """
         # У старого ведущего игрока изменяем состояние на waiting_move
-        old_leading_player_state = get_or_add_state(self.leading.object.id)
+        old_leading_player_state = STATES.get(self.leading.object.id)
         old_leading_player_state.name = 'waiting_move'
 
         # Изменяем ведущего игрока
         self.leading = self.get_opponent(self.leading)
 
         # У нового ведущего игрока изменяем состояние на making_move
-        new_leading_player_state = get_or_add_state(self.leading.object.id)
+        new_leading_player_state = STATES.get(self.leading.object.id)
         new_leading_player_state.name = 'making_move'
         self.ask_to_make_a_move()
         self.warn_player_about_an_attack()
@@ -379,7 +378,7 @@ class Session(threading.Thread):
         self.update_rating(removing_player)
 
         # После удаления выставляем состояние пользователя на main и меняем флаг in_game на False.
-        state = get_or_add_state(removing_player.object.id)
+        state = STATES.get(removing_player.object.id)
         state.name = 'main'
         state.in_game = False
 
@@ -411,13 +410,11 @@ class Session(threading.Thread):
         Единственному оставшемуся игроку в сессии отправляем поздравление,
         обновляем рейтинг, изменяем его состояние и завершаем сессию.
         """
-
-
         if self.players:
             winner = self.players[0]
             self.players.remove(winner)
             self.update_rating(winner)
-            winner_state = get_or_add_state(winner.object.id)
+            winner_state = STATES.get(winner.object.id)
             winner_state.name = 'main'
             winner_state.in_game = False
             self.bot.send_message(winner.object.id, 'Поздравляем, вы выиграли!', reply_markup=keyboard_start())

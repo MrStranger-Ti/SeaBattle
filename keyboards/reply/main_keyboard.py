@@ -1,6 +1,7 @@
 from telebot import types
 from telebot.types import ReplyKeyboardMarkup
 
+
 def keyboard_start() -> ReplyKeyboardMarkup:
     """
     Создание клавиатуры для команды /start.
@@ -15,6 +16,7 @@ def keyboard_start() -> ReplyKeyboardMarkup:
     markup.row(btn3)
 
     return markup
+
 
 def keyboard_play() -> ReplyKeyboardMarkup:
     """

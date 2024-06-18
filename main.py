@@ -1,4 +1,3 @@
-import importlib
 import logging
 import os
 
@@ -7,8 +6,7 @@ import dotenv
 
 from database.queries import create_tables
 from loader import bot
-from settings import PLAYERS_QUEUE
-from states.states import get_or_add_state
+from settings import PLAYERS_QUEUE, STATES
 from threads.session import Session
 
 dotenv.load_dotenv()
@@ -30,7 +28,7 @@ def check_queue() -> None:
         for player in PLAYERS_QUEUE[:total_players]:
 
             # Перед созданием сессии устанавливаем флаг in_game=True, чтобы знать, что пользователь в игре.
-            state = get_or_add_state(player.id)
+            state = STATES.get(player.id)
             state.in_game = True
 
         # Создаем сессию.
@@ -49,11 +47,11 @@ def create_session(players: list[telebot.types.User]):
 
 
 def main():
-    # подгружаем все файлы с обработчиками.
+    # Подгружаем все файлы с обработчиками.
     from handlers import load
     load(bot)
 
-    # создаем таблицы, если их еще нет.
+    # Создаем таблицы, если их еще нет.
     create_tables()
 
     logger.info('Бот запущен!')
