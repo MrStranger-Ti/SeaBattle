@@ -1,6 +1,7 @@
 from telebot import TeleBot
 from telebot.types import Message, CallbackQuery
 
+from database.queries import get_users
 from helpers.validators import validate_positions_callback
 from main import check_queue
 from settings import PLAYERS_QUEUE, row_letters, col_numbers, ships
@@ -26,6 +27,28 @@ def load(bot: TeleBot):
                 contents = f.read()
                 bot.send_message(message.chat.id,contents)
 
+    @bot.message_handler(commands=['rating'])
+    def rating_table(message: Message):
+        """
+        Обработчик команды /rating.
+
+        :param message: сообщение
+        """
+        players_queue_ids = [user.id for user in PLAYERS_QUEUE]
+        user_state = get_or_add_state(message.from_user.id)
+        if message.from_user.id not in players_queue_ids and not user_state.in_game:
+            users_rating = ""
+            current_user_rating = None
+            for num, user in enumerate(get_users(), start=1):
+                user_id, username, rating = user
+                if num <= 10:
+                    users_rating += f"{num}. @{username} - {rating}🏆\n"
+                if user_id == message.from_user.id:
+                    current_user_rating = f"\n<b>{num}. @{username}(вы) - {rating}🏆</b>\n"
+            if current_user_rating:
+                users_rating += current_user_rating
+            bot.send_message(message.chat.id, text=f"🏵Таблица лидеров🏵\n\n{users_rating}",
+                             reply_markup=keyboard_start(), parse_mode="HTML")
     @bot.message_handler(commands=['start'])
     def start(message: Message):
         """
@@ -149,7 +172,7 @@ def load(bot: TeleBot):
         if user_state.name == 'waiting_for_move':
             bot.delete_message(message.chat.id, message.id)
 
-        elif message.text == "Подбор игроков":
+        elif message.text == "👥Подбор игроков👥":
             add_player_to_queue(message)
             bot.delete_message(message_id=message.id, chat_id=message.from_user.id)
 
@@ -157,6 +180,10 @@ def load(bot: TeleBot):
             leave(message)
             bot.delete_message(message_id=message.id, chat_id=message.from_user.id)
 
-        elif message.text == "Информация":
+        elif message.text == "📕Информация📕":
             info(message)
+            bot.delete_message(message_id=message.id, chat_id=message.from_user.id)
+
+        elif message.text == "🏆Рейтинг🏆":
+            rating_table(message)
             bot.delete_message(message_id=message.id, chat_id=message.from_user.id)
