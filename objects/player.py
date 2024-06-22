@@ -130,11 +130,12 @@ class Player:
 
         return img
 
-    def draw_player_field(self, opponent: bool = False) -> io.BytesIO:
+    def draw_player_field(self, opponent: bool = False, marked_position: str = None) -> io.BytesIO:
         """
         Отрисовка ячеек поля игрока.
 
         :param opponent: нужно ли рисовать поле как вражеское
+        :param marked_position: позиция ячейки, которую надо отметить
         :return двоичный поток
         """
         # Рисовать ли поле как вражеское.
@@ -175,7 +176,10 @@ class Player:
                     elif not cell.opened:
                         color = 'black'
                 else:
-                    if cell.opened and cell.is_ship:
+                    if cell.position == marked_position:
+                        color = 'orange'
+
+                    elif cell.opened and cell.is_ship:
                         color = 'red'
 
                     elif cell.is_ship:

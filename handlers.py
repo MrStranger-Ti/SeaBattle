@@ -5,10 +5,10 @@ from helpers.deleting_messages import deleting_user_messages
 from helpers.sending_messages import send_message
 from database.queries import get_users
 from helpers.validators import validate_positions_callback
-from main import check_queue
-from objects.initials import init
+from objects.state import init, get_state
 from settings import PLAYERS_QUEUE, SHIPS, STATES
 from keyboards.reply.main_keyboard import keyboard_start, keyboard_play
+from threads.session import check_queue
 
 
 def load(bot: TeleBot):
@@ -25,7 +25,7 @@ def load(bot: TeleBot):
         :param message: сообщение
         """
         players_queue_ids = [user.id for user in PLAYERS_QUEUE]
-        user_state = STATES.get(message.from_user.id)
+        user_state = get_state(message.from_user.id)
         if message.from_user.id not in players_queue_ids and not user_state.in_game:
             with open('message_text/information.txt', 'r', encoding='utf-8') as f:  # открываем документ
                 contents = f.read()
@@ -63,7 +63,7 @@ def load(bot: TeleBot):
         :param message: сообщение
         """
         players_queue_ids = [user.id for user in PLAYERS_QUEUE]
-        user_state = STATES.get(message.from_user.id)
+        user_state = get_state(message.from_user.id)
 
         if message.from_user.id not in players_queue_ids and not user_state.in_game:
             send_message(
@@ -86,7 +86,7 @@ def load(bot: TeleBot):
         players_queue_ids = [user.id for user in PLAYERS_QUEUE]
 
         # Достаем состояние пользователя.
-        user_state = STATES.get(message.from_user.id)
+        user_state = get_state(message.from_user.id)
 
         # Если пользователь не в очереди и не в игре, то добавляем его очередь.
         if message.from_user.id not in players_queue_ids and not user_state.in_game:
@@ -99,7 +99,7 @@ def load(bot: TeleBot):
             )
 
             # Проверяем количество игроков в очереди и запускаем сессию с нужным количеством игроков.
-            check_queue()
+            check_queue(bot)
 
         # Если пользователь в очереди, то уведомляем его об этом.
         elif message.from_user.id in players_queue_ids:
@@ -118,7 +118,7 @@ def load(bot: TeleBot):
 
         :param message: сообщение
         """
-        user_state = STATES.get(message.from_user.id)
+        user_state = get_state(message.from_user.id)
 
         # Если игрок находится в игре, то ставим ему состояние leaving_game.
         # После этого сессия увидит, что у игрока сменилось состояние и исключит его.
@@ -147,7 +147,7 @@ def load(bot: TeleBot):
 
         :param callback: данные о кнопке
         """
-        user_state = STATES.get(callback.from_user.id)
+        user_state = get_state(callback.from_user.id)
         for ship in SHIPS:
 
             # Обработка позиции при подготовке к игре.
@@ -167,7 +167,7 @@ def load(bot: TeleBot):
 
         :param callback: данные о кнопке
         """
-        user_state = STATES.get(callback.from_user.id)
+        user_state = get_state(callback.from_user.id)
         for ship in SHIPS:
 
             # Обработка направления при подготовке к игре.
