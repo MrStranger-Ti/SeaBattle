@@ -45,15 +45,15 @@ class State:
         self._buffer_count = value
 
     def add_buffer_message(self, message: Message) -> None:
-        self._messages.append(message)
-        if len(self._messages) > self._buffer_count:
+        self._buffer_messages.append(message)
+        if len(self._buffer_messages) > self._buffer_count:
             self._delete_messages()
 
     def _delete_messages(self) -> None:
-        moving_messages_ids = [message.id for message in self._messages[:-self._buffer_count]]
+        moving_messages_ids = [message.id for message in self._buffer_messages[:-self._buffer_count]]
         deleted = self.bot.delete_messages(self.user.id, moving_messages_ids)
         if deleted:
-            del self._messages[:-self._buffer_count]
+            del self._buffer_messages[:-self._buffer_count]
 
 
 def get_state(user_id: int) -> State:

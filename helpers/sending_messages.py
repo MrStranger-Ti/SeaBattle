@@ -6,7 +6,7 @@ from objects.state import get_state
 
 def add_message_to_buffer(user_id: int, bot_message: Message) -> None:
     user_state = get_state(user_id)
-    user_state.add_message(bot_message)
+    user_state.add_buffer_message(bot_message)
 
 
 def send_message(bot: TeleBot, chat_id: int, *args, **kwargs) -> Message:

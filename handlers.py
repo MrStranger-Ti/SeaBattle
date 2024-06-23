@@ -153,12 +153,12 @@ def load(bot: TeleBot):
             # Обработка позиции при подготовке к игре.
             if user_state.name == 'setting_ship_position_' + ship:
                 user_state.name = 'check_ship_position_' + ship
-                user_state.messages['position'] = callback.data
+                user_state.message_storage['position'] = callback.data
 
             # Обработка позиции в процессе игры.
             elif user_state.name == 'making_move':
                 user_state.name = 'check_move'
-                user_state.messages['position'] = callback.data
+                user_state.message_storage['position'] = callback.data
 
     @bot.callback_query_handler(lambda callback: callback.data in ('top', 'right', 'bottom', 'left', 'cancel'))
     def process_direction_buttons(callback: CallbackQuery):
@@ -178,7 +178,7 @@ def load(bot: TeleBot):
                     break
 
                 user_state.name = 'check_ship_direction_' + ship
-                user_state.messages['direction'] = callback.data
+                user_state.message_storage['direction'] = callback.data
 
     # |-------------------|
     # | Обработчик текста |

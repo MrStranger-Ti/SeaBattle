@@ -101,8 +101,8 @@ class Session(threading.Thread):
 
             for player in self.players:
                 player_state = get_state(player.object.id)
-                position = player_state.messages.get('position')
-                direction = player_state.messages.get('direction')
+                position = player_state.message_storage.get('position')
+                direction = player_state.message_storage.get('direction')
                 for count, ship in enumerate(SHIPS):
                     if player_state.name == 'check_ship_position_' + ship:
                         try:
@@ -125,7 +125,7 @@ class Session(threading.Thread):
                             except ShipNearbyError:
                                 player_state.name = 'setting_ship_position_' + ship
                                 self.ask_to_set_the_ship(player, ship)
-                                self.send_error(player.object.id, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
+                                self.send_message(player, 'Нельзя поставить корабль рядом с другим. Попробуйте снова.')
 
                             if player.all_ships_on_field():
                                 player.ready = True
@@ -254,10 +254,10 @@ class Session(threading.Thread):
 
             # Если у ведущего игрока состояние check_move, то пробуем раскрыть клетку у соперника.
             if leading_player_state.name == 'check_move':
-
+                position = leading_player_state.message_storage.get('position')
                 try:
                     # Пробуем открыть клетку соперника. Если мы успешно ее открыли, то узнаем корабль это или нет.
-                    is_ship = self.leading.open_opponent_cell(leading_player_state.messages.get('position'))
+                    is_ship = self.leading.open_opponent_cell(position)
                 except (PositionError, CellOpenedError) as exc:
                     self.ask_to_make_a_move()
 
@@ -333,6 +333,14 @@ class Session(threading.Thread):
                     caption=message_text,
                 )
 
+    def announce_player_leaving(self, leaving_player: Player) -> None:
+        for player in self.players + self.spectators:
+            if player != leaving_player:
+                self.send_message(
+                    player,
+                    f'Игрок {leaving_player} покинул игру',
+                )
+
     def check_leaving_players(self) -> None:
         """
         Проверка игроков, которые хотят выйти из игры.
@@ -344,6 +352,7 @@ class Session(threading.Thread):
             # Если игрок хочет покинуть игру, то удаляем его из сессии.
             if player_state.name == 'leaving_game':
                 self.send_message(player, 'Вы покинули игру.', reply_markup=keyboard_start())
+                self.announce_player_leaving(player)
                 self.remove_player(player)
 
     def is_everyone_ready(self) -> bool:
@@ -440,6 +449,9 @@ class Session(threading.Thread):
         # Отправляем пользователю итоги игры, а затем отправляем ему сообщение
         self.send_player_pool(removing_player)
         self.change_player_buffer(removing_player, buffer_count=1)
+
+        # Проверяем количество оставшихся игроков.
+        self.check_number_of_players()
 
     def move_player_to_spectators(self, moving_player: Player) -> None:
         """

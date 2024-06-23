@@ -18,7 +18,6 @@ SHIPS = [
     'first_2',
     'second_2',
     'third_2',
-    'fourth_2',
     'first_1',
     'second_1',
 ]
