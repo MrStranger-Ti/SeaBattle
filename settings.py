@@ -1,10 +1,16 @@
 import os.path
+
 from string import ascii_uppercase, digits
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 # Основные настройки.
 BASE_DIR = os.path.dirname(__file__)
 DATABASE_PATH = os.path.join(BASE_DIR, 'database.db')
+CLEAR_BUFFER_TIME = int(os.getenv('CLEAR_BUFFER_TIME', 60 * 24))
 
 
 # Очередь игроков.

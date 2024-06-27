@@ -4,6 +4,7 @@ import dotenv
 
 from database.queries import create_tables
 from loader import bot
+from threads.message_scheduler import start_message_scheduler
 
 dotenv.load_dotenv()
 
@@ -18,6 +19,9 @@ def main() -> None:
 
     # Создаем таблицы, если их еще нет.
     create_tables()
+
+    # Запускаем планировщик для очистки буфера.
+    start_message_scheduler()
 
     logger.info('Бот запущен!')
     bot.infinity_polling()
