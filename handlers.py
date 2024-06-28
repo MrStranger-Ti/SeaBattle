@@ -32,6 +32,8 @@ def load(bot: TeleBot):
                 send_message(bot, message.from_user.id, contents, reply_markup=keyboard_start())
 
     @bot.message_handler(commands=['rating'])
+    @deleting_user_messages(bot)
+    @init(bot)
     def rating_table(message: Message):
         """
         Обработчик команды /rating.
@@ -39,7 +41,8 @@ def load(bot: TeleBot):
         :param message: сообщение
         """
         players_queue_ids = [user.id for user in PLAYERS_QUEUE]
-        user_state = get_or_add_state(message.from_user.id)
+        user_state = get_state(message.from_user.id)
+
         if message.from_user.id not in players_queue_ids and not user_state.in_game:
             users_rating = ""
             current_user_rating = None
@@ -47,12 +50,21 @@ def load(bot: TeleBot):
                 user_id, username, rating = user
                 if num <= 10:
                     users_rating += f"{num}. @{username} - {rating}🏆\n"
+
                 if user_id == message.from_user.id:
                     current_user_rating = f"\n<b>{num}. @{username}(вы) - {rating}🏆</b>\n"
+
             if current_user_rating:
                 users_rating += current_user_rating
-            bot.send_message(message.chat.id, text=f"🏵Таблица лидеров🏵\n\n{users_rating}",
-                             reply_markup=keyboard_start(), parse_mode="HTML")
+
+            send_message(
+                bot,
+                message.chat.id,
+                text=f"🏵Таблица лидеров🏵\n\n{users_rating}",
+                reply_markup=keyboard_start(),
+                parse_mode="HTML",
+            )
+
     @bot.message_handler(commands=['start'])
     @deleting_user_messages(bot)
     @init(bot)

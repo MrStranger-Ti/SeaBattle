@@ -54,10 +54,10 @@ def update_or_add_rating(user: User, rating: int) -> None:
                 ?,
                 ?
             )
-            ''', (user.id, user.username, rating))
+            ''', (user.id, user.username or user.first_name, rating))
 
 
-def get_users() -> list[tuple[int]]:
+def get_users() -> list[tuple[int, int, int]]:
     """
     Получение рейтинга всех пользователей.
 
