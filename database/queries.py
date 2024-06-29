@@ -67,7 +67,11 @@ def get_player_rating(user: User) -> int:
         WHERE `id` == ?
         ''', (user.id,))
 
-        rating = cursor.fetchone()[0]
+        data = cursor.fetchone()
+        if data:
+            rating = data[0]
+        else:
+            rating = None
 
     return rating
 
