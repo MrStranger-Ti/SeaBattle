@@ -5,16 +5,15 @@ import time
 from typing import Optional, Any, Callable
 
 import telebot
-from telebot.types import Message
 
-from database.queries import update_or_add_rating
+from database.queries import update_or_add_rating, get_player_rating
 from helpers.sending_messages import send_message, send_photo
 from keyboards.inline.game import get_direction_keyboard, get_positions_keyboard
 from objects.state import get_state
-from settings import SHIPS, STATES, PLAYERS_QUEUE
+from settings import SHIPS, PLAYERS_QUEUE
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 from objects.player import Player
-from keyboards.reply.main_keyboard import keyboard_start
+from keyboards.reply.main_keyboard import keyboard_start, keyboard_play
 
 
 class Session(threading.Thread):
@@ -68,6 +67,9 @@ class Session(threading.Thread):
         if player_message_pool:
             self.change_player_buffer(player, len(player_message_pool))
             for func, args, kwargs in player_message_pool:
+                if 'reply_markup' not in kwargs:
+                    kwargs['reply_markup'] = keyboard_play()
+
                 func(self.bot, player.object.id, *args, **kwargs)
                 time.sleep(0.3)
 
@@ -488,12 +490,13 @@ class Session(threading.Thread):
 
         :param player: игрок
         """
-        if self.total_players - 1 == len(self.players):
-            player_rating = -1
+        player_rating = get_player_rating(player.object)
+        if self.total_players - 1 == len(self.players) and player_rating > 0:
+            update_player_rating = -1
         else:
-            player_rating = self.total_players - len(self.players) - 1
+            update_player_rating = self.total_players - len(self.players) - 1
 
-        update_or_add_rating(player.object, player_rating)
+        update_or_add_rating(player.object, update_player_rating)
 
     def check_number_of_players(self) -> None:
         """

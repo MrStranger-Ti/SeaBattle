@@ -57,6 +57,21 @@ def update_or_add_rating(user: User, rating: int) -> None:
             ''', (user.id, user.username or user.first_name, rating))
 
 
+def get_player_rating(user: User) -> int:
+    with sqlite3.connect(DATABASE_PATH) as conn:
+        cursor = conn.cursor()
+
+        cursor.execute('''
+        SELECT `rating`
+        FROM `users`
+        WHERE `id` == ?
+        ''', (user.id,))
+
+        rating = cursor.fetchone()[0]
+
+    return rating
+
+
 def get_users() -> list[tuple[int, int, int]]:
     """
     Получение рейтинга всех пользователей.
