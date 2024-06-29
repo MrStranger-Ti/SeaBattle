@@ -1,6 +1,6 @@
 from telebot.types import CallbackQuery
 
-from settings import row_letters, col_numbers
+from settings import ROW_LETTERS, COL_NUMBERS
 
 
 def validate_positions_callback(callback: CallbackQuery) -> bool:
@@ -11,8 +11,8 @@ def validate_positions_callback(callback: CallbackQuery) -> bool:
     :return: bool
     """
     positions = []
-    for row in row_letters:
-        for col in col_numbers:
+    for row in ROW_LETTERS:
+        for col in COL_NUMBERS:
             positions.append(row + col)
 
     if callback.data in positions:

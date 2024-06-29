@@ -1,26 +1,40 @@
 import os.path
-from string import ascii_uppercase
+
+from string import ascii_uppercase, digits
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 # Основные настройки.
 BASE_DIR = os.path.dirname(__file__)
 DATABASE_PATH = os.path.join(BASE_DIR, 'database.db')
+CLEAR_BUFFER_TIME = int(os.getenv('CLEAR_BUFFER_TIME', 60 * 24))
+
 
 # Очередь игроков.
 PLAYERS_QUEUE = []
 
+
 # Названия кораблей.
-ships: list[str] = [
+SHIPS = [
     'first_3',
     'second_3',
-    'third_3',
     'first_2',
     'second_2',
     'third_2',
     'first_1',
+    'second_1',
 ]
 
+
 # Строки поля.
-row_letters = ascii_uppercase[:8]
+ROW_LETTERS = ascii_uppercase[:8]
 
 # Колонки поля.
-col_numbers = [str(num) for num in range(1, 9)]
+COL_NUMBERS = digits[1: 9]
+
+
+# Состояния.
+STATES = dict()

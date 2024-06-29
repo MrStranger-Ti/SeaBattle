@@ -7,7 +7,7 @@ import PIL
 from PIL import ImageDraw, Image, ImageFont
 from telebot.types import User
 
-from settings import ships, row_letters, col_numbers
+from settings import SHIPS, ROW_LETTERS, COL_NUMBERS
 from objects.exceptions import PositionError, CellOpenedError, ShipNearbyError
 
 
@@ -36,7 +36,7 @@ class Player:
         self.field_img: Image.Image = self.draw_empty_field()
         self.ships: dict[str: list['Cell']] = {
             name: []
-            for name in ships
+            for name in SHIPS
         }
 
     def __str__(self):
@@ -52,7 +52,7 @@ class Player:
         :return вложенный список
         """
         return [
-            [Cell(row_letters[row] + str(col + 1)) for col in range(8)]
+            [Cell(ROW_LETTERS[row] + str(col + 1)) for col in range(8)]
             for row in range(8)
         ]
 
@@ -80,7 +80,7 @@ class Player:
         font = PIL.ImageFont.truetype('arial', size=18)
 
         # Отрисовка букв и цифр.
-        for num, letter in enumerate(row_letters):
+        for num, letter in enumerate(ROW_LETTERS):
             color = 'black'
 
             pencil.text(
@@ -114,7 +114,7 @@ class Player:
         pencil.rectangle((x0, y0, x1, y1), outline='black')
 
         # Отрисовка горизонтальных и вертикальных линий.
-        for num in range(len(row_letters) - 1):
+        for num in range(len(ROW_LETTERS) - 1):
             num += 1
             horizontal_lines_coords = [
                 (x0, y0 + (num * cell_size)),
@@ -130,11 +130,12 @@ class Player:
 
         return img
 
-    def draw_player_field(self, opponent: bool = False) -> io.BytesIO:
+    def draw_player_field(self, opponent: bool = False, marked_position: str = None) -> io.BytesIO:
         """
         Отрисовка ячеек поля игрока.
 
         :param opponent: нужно ли рисовать поле как вражеское
+        :param marked_position: позиция ячейки, которую надо отметить
         :return двоичный поток
         """
         # Рисовать ли поле как вражеское.
@@ -175,7 +176,10 @@ class Player:
                     elif not cell.opened:
                         color = 'black'
                 else:
-                    if cell.opened and cell.is_ship:
+                    if cell.position == marked_position:
+                        color = 'orange'
+
+                    elif cell.opened and cell.is_ship:
                         color = 'red'
 
                     elif cell.is_ship:
@@ -214,7 +218,7 @@ class Player:
             raise PositionError()
 
         # Получаем индексы из позиции, а затем получаем ячейку по этим индексам.
-        row = row_letters.index(position[0].upper())
+        row = ROW_LETTERS.index(position[0].upper())
         col = int(position[1:]) - 1
         return self.field[row][col]
 
@@ -245,36 +249,36 @@ class Player:
         # Если какая-то ячейка в переданном направлении неверна, то возбуждаем ошибку PositionError.
         cur_position = cell.position
         for _ in range(ship_size - 1):
-            ind_cur_row = row_letters.index(cur_position[0])
-            ind_cur_col = col_numbers.index(cur_position[1:])
+            ind_cur_row = ROW_LETTERS.index(cur_position[0])
+            ind_cur_col = COL_NUMBERS.index(cur_position[1:])
 
             if direction == 'top':
                 ind_next_row = ind_cur_row - 1
                 if ind_next_row < 0:
                     raise PositionError()
 
-                next_position = row_letters[ind_next_row] + cur_position[1:]
+                next_position = ROW_LETTERS[ind_next_row] + cur_position[1:]
 
             elif direction == 'right':
                 ind_next_col = ind_cur_col + 1
-                if ind_next_col > len(col_numbers) - 1:
+                if ind_next_col > len(COL_NUMBERS) - 1:
                     raise PositionError()
 
-                next_position = cur_position[0] + col_numbers[ind_next_col]
+                next_position = cur_position[0] + COL_NUMBERS[ind_next_col]
 
             elif direction == 'bottom':
                 ind_next_row = ind_cur_row + 1
-                if ind_next_row > len(row_letters) - 1:
+                if ind_next_row > len(ROW_LETTERS) - 1:
                     raise PositionError()
 
-                next_position = row_letters[ind_next_row] + cur_position[1:]
+                next_position = ROW_LETTERS[ind_next_row] + cur_position[1:]
 
             elif direction == 'left':
                 ind_next_col = ind_cur_col - 1
                 if ind_next_col < 0:
                     raise PositionError()
 
-                next_position = cur_position[0] + col_numbers[ind_next_col]
+                next_position = cur_position[0] + COL_NUMBERS[ind_next_col]
 
             next_cell = self.get_cell(next_position)
             cells.append(next_cell)
@@ -384,8 +388,8 @@ class Player:
         :return: список ближайших ячеек
         """
         # Получение индексов переданной ячейки.
-        ind_row = row_letters.index(cell.position[0])
-        ind_col = col_numbers.index(cell.position[1:])
+        ind_row = ROW_LETTERS.index(cell.position[0])
+        ind_col = COL_NUMBERS.index(cell.position[1:])
 
         # Получение индексов всех ближних ячеек.
         indices = [
@@ -402,7 +406,7 @@ class Player:
         # Если ячейка неверна, то сохраняем None в списке, иначе саму ячейку.
         cells_nearby = []
         for ind_row, ind_col in indices:
-            if 0 <= ind_row <= len(row_letters) - 1 and 0 <= ind_col <= len(col_numbers) - 1:
+            if 0 <= ind_row <= len(ROW_LETTERS) - 1 and 0 <= ind_col <= len(COL_NUMBERS) - 1:
                 cell = self.field[ind_row][ind_col]
                 cells_nearby.append(cell)
             else:
