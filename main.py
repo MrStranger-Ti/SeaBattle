@@ -14,8 +14,7 @@ logger = logging.getLogger(__name__)
 
 def main() -> None:
     # Подгружаем все файлы с обработчиками.
-    from handlers import load
-    load(bot)
+    import handlers
 
     # Создаем таблицы, если их еще нет.
     create_tables()
