@@ -10,6 +10,7 @@ load_dotenv()
 # Основные настройки.
 BASE_DIR = os.path.dirname(__file__)
 DATABASE_PATH = os.path.join(BASE_DIR, 'database.db')
+TOTAL_SESSION_PLAYERS = os.getenv('TOTAL_SESSION_PLAYERS', 4)
 CLEAR_BUFFER_TIME = int(os.getenv('CLEAR_BUFFER_TIME', 60 * 24))
 
 

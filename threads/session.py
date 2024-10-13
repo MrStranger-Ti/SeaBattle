@@ -6,6 +6,7 @@ from typing import Optional, Any, Callable
 
 import telebot
 
+import settings
 from database.queries import update_or_add_rating, get_player_rating
 from helpers.sending_messages import send_message, send_photo
 from keyboards.inline.game import get_direction_keyboard, get_positions_keyboard
@@ -541,7 +542,7 @@ def check_queue(bot: telebot.TeleBot) -> None:
     Если игроков достаточное количество, то запускаем с ними сессию.
     """
     # total_players - количество необходимых игроков для создания сессии.
-    total_players = int(os.getenv('TOTAL_SESSION_PLAYERS', 4))
+    total_players = int(settings.TOTAL_SESSION_PLAYERS)
     if len(PLAYERS_QUEUE) >= total_players:
         for player in PLAYERS_QUEUE[:total_players]:
 
